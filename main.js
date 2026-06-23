@@ -532,6 +532,11 @@ aircraft.position.set(
 2,
 0
 );
+aircraft.scale.set(
+0.25,
+0.25,
+0.25
+);
 
 scene.add(
 aircraft
@@ -936,8 +941,8 @@ function updateCamera()
 const offset =
 new THREE.Vector3(
 0,
-8,
-25
+12,
+60
 );
 
 offset.applyQuaternion(
