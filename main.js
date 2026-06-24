@@ -301,7 +301,7 @@ scene.add(cloud);
 // =====================================
 // CITY BUILDINGS
 // =====================================
-
+const buildings = [];
 for(
 let i=0;
 i<600;
@@ -338,6 +338,7 @@ z
 building.castShadow = true;
 
 scene.add(building);
+    buildings.push(building);
 }
 
 // =====================================
@@ -1396,8 +1397,40 @@ updateAI();
 
 updateDayNight();
 
-checkCrash();
+for(const building of buildings)
+{
+    const dx =
+    aircraft.position.x -
+    building.position.x;
 
+    const dz =
+    aircraft.position.z -
+    building.position.z;
+
+    const horizontalDistance =
+    Math.sqrt(
+        dx*dx +
+        dz*dz
+    );
+
+    const buildingTop =
+    building.position.y +
+    building.geometry.parameters.height / 2;
+
+    if(
+        horizontalDistance < 12 &&
+        aircraft.position.y < buildingTop
+    )
+    {
+        alert(
+            "💥 اصطدمت الطائرة بمبنى!"
+        );
+
+        location.reload();
+
+        return;
+    }
+}
 renderer.render(
 scene,
 camera
