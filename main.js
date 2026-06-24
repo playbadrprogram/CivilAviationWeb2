@@ -561,6 +561,12 @@ const liftFactor = 0.015;
 let dayTime = 0;
 let isFlying = false;
 
+let flightPhase = "TAXI";
+
+const takeoffSpeed = 0.25;
+
+const landingSpeedLimit = 0.18;
+
 const keys = {};
 
 
@@ -874,11 +880,17 @@ let lift = 0;
 // لا يمكن الإقلاع إلا بعد الوصول لسرعة كافية
 if(speed > 0.22)
 {
+    let lift = 0;
+
+if(speed > takeoffSpeed)
+{
     lift =
-    speed *
+    (speed - takeoffSpeed) *
     speed *
     liftFactor *
+    2 *
     (1 + pitch);
+}
 }
   ///_____
   //=========
@@ -902,6 +914,24 @@ verticalSpeed = 0;
 
 aircraft.position.y =
 altitude;
+
+
+    if(altitude < 3)
+{
+    flightPhase = "TAXI";
+}
+else if(altitude < 50)
+{
+    flightPhase = "TAKEOFF";
+}
+else if(altitude < 300)
+{
+    flightPhase = "CRUISE";
+}
+else
+{
+    flightPhase = "HIGH ALTITUDE";
+}
 
 // direction
 
@@ -1379,6 +1409,18 @@ window.innerHeight
 
 function animate()
 {
+
+const phaseElement =
+document.getElementById(
+"phase"
+);
+
+if(phaseElement)
+{
+    phaseElement.innerText =
+    flightPhase;
+}
+    
 requestAnimationFrame(
 animate
 );
