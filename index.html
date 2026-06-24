@@ -1,13 +1,16 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ar">
+
 <head>
 <meta charset="UTF-8">
+
 <meta name="viewport"
 content="width=device-width, initial-scale=1.0">
 
-<title>Civil Aviation Simulator</title>
+<title>Civil Aviation Simulator V6.2</title>
 
 <style>
+
 html,
 body
 {
@@ -17,19 +20,53 @@ body
     width:100%;
     height:100%;
     background:black;
+    font-family:Arial;
 }
 
 canvas
 {
     display:block;
 }
+
+#hud
+{
+    position:fixed;
+    top:10px;
+    left:10px;
+
+    color:white;
+
+    background:rgba(0,0,0,0.5);
+
+    padding:10px;
+
+    border-radius:8px;
+
+    z-index:1000;
+}
+
+#hud div
+{
+    margin:4px 0;
+}
+
 </style>
 
 </head>
 
 <body>
 
+<div id="hud">
+
+<div>
+🛫 الحالة:
+<span id="phase">TAXI</span>
+</div>
+
+</div>
+
 <script type="module" src="main.js"></script>
 
 </body>
+
 </html>
