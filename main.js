@@ -873,7 +873,7 @@ aircraft.rotation.z =
 
 // lift
 
-let lift = 0;
+
 
 
 
@@ -1473,6 +1473,24 @@ for(const building of buildings)
         return;
     }
 }
+for(const ai of aiAircrafts)
+{
+    if(
+        aircraft.position.distanceTo(
+            ai.mesh.position
+        ) < 10
+    )
+    {
+        alert(
+            "💥 اصطدام جوي!"
+        );
+
+        location.reload();
+
+        return;
+    }
+}
+    
 renderer.render(
 scene,
 camera
