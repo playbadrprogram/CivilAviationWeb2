@@ -874,7 +874,7 @@ aircraft.rotation.z =
 // lift
 
 
-
+let lift = 0;
 
 
 // لا يمكن الإقلاع إلا بعد الوصول لسرعة كافية
