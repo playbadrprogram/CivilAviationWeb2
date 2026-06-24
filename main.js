@@ -880,7 +880,6 @@ let lift = 0;
 // لا يمكن الإقلاع إلا بعد الوصول لسرعة كافية
 if(speed > 0.22)
 {
-    let lift = 0;
 
 if(speed > takeoffSpeed)
 {
