@@ -558,6 +558,7 @@ const gravity = 0.003;
 const liftFactor = 0.015;
 
 let dayTime = 0;
+let isFlying = false;
 
 const keys = {};
 
@@ -867,18 +868,19 @@ aircraft.rotation.z =
 
 let lift = 0;
 
-if(
-speed > 0.25
-)
+
+
+// لا يمكن الإقلاع إلا بعد الوصول لسرعة كافية
+if(speed > 0.22)
 {
-lift =
-speed *
-speed *
-liftFactor *
-(
-1 + pitch
-);
+    lift =
+    speed *
+    speed *
+    liftFactor *
+    (1 + pitch);
 }
+  ///_____
+  //=========
 
 verticalSpeed +=
 lift;
