@@ -1443,6 +1443,8 @@ updateAI();
 
 updateDayNight();
 
+checkCrash();
+
 for(const building of buildings)
 {
     const dx =
