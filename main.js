@@ -323,11 +323,16 @@ color:0x777777
 })
 );
 
-const x =
-(Math.random()-0.5)*8000;
+ let x, z;
 
-const z =
-(Math.random()-0.5)*8000;
+do
+{
+    x = (Math.random()-0.5)*8000;
+    z = (Math.random()-0.5)*8000;
+}
+while(
+    Math.sqrt(x*x + z*z) < 600
+);   
 
 building.position.set(
 x,
@@ -1477,7 +1482,7 @@ for(const ai of aiAircrafts)
     if(
         aircraft.position.distanceTo(
             ai.mesh.position
-        ) < 10
+        ) < 3
     )
     {
         alert(
