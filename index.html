@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>محاكي الطيران الاحترافي المطور</title>
+    <title>محاكي الطيران الاحترافي - النسخة العملاقة</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #1a2a3a; font-family: sans-serif; }
         #mobilePanel { position: fixed; bottom: 20px; left: 20px; z-index: 1000; direction: ltr; display: flex; flex-wrap: wrap; width: 220px; }
-        #mobilePanel button { width: 60px; height: 60px; font-size: 16px; margin: 4px; background: rgba(255,255,255,0.85); border: 2px solid #333; border-radius: 12px; cursor: pointer; -webkit-user-select: none; user-select: none; font-weight: bold; }
+        #mobilePanel button { width: 60px; height: 60px; font-size: 15px; margin: 4px; background: rgba(255,255,255,0.9); border: 2px solid #333; border-radius: 12px; cursor: pointer; -webkit-user-select: none; user-select: none; font-weight: bold; }
         #mobilePanel button:active { background: #00ffcc; }
         #hudPanel { position: fixed; top: 10px; right: 10px; color: white; font-size: 16px; background: rgba(0,0,0,0.6); padding: 12px; z-index: 1000; border-radius: 8px; line-height: 1.5; text-align: right; direction: rtl; border: 1px solid rgba(255,255,255,0.2); }
         #phaseDisplay { position: fixed; top: 10px; left: 50%; transform: translateX(-50%); color: #00ffcc; font-size: 20px; font-weight: bold; background: rgba(0,0,0,0.7); padding: 6px 16px; border-radius: 5px; z-index: 1000; text-shadow: 0 0 5px #00ffcc; text-align: center; }
@@ -35,28 +35,54 @@
     window.addEventListener('DOMContentLoaded', () => {
         try {
             // =====================================
-            // نظام الصوت والمحرك
+            // نظام الصوت النفاث الاصطناعي (Web Audio API)
             // =====================================
-            const bgAudio = new Audio('engain.mp3'); 
-            bgAudio.loop = true;
-            let audioStarted = false;
+            let audioCtx = null;
+            let mainOsc = null;
+            let mainGain = null;
 
-            function startEngineAudio() {
-                if (!audioStarted) {
-                    bgAudio.play().then(() => {
-                        audioStarted = true;
-                    }).catch(e => console.log("تطلب المتصفحات تفاعلاً لتشغيل الصوت"));
-                }
+            function initAudio() {
+                if (audioCtx) return;
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                
+                // إنشاء متذبذب لصوت المحرك
+                mainOsc = audioCtx.createOscillator();
+                mainOsc.type = 'sawtooth'; 
+                mainOsc.frequency.setValueAtTime(60, audioCtx.currentTime); // تردد منخفض للمحرك
+
+                // فلتر لتنعيم الصوت وجعله يبدو كنفاثة
+                const filter = audioCtx.createBiquadFilter();
+                filter.type = 'lowpass';
+                filter.frequency.setValueAtTime(300, audioCtx.currentTime);
+
+                mainGain = audioCtx.createGain();
+                mainGain.gain.setValueAtTime(0.0, audioCtx.currentTime); // يبدأ صامتاً
+
+                mainOsc.connect(filter);
+                filter.connect(mainGain);
+                mainGain.connect(audioCtx.destination);
+                
+                mainOsc.start();
             }
 
-            // تشغيل الصوت عند لمس الشاشة في أي مكان لضمان التفعيل على الهاتف
-            document.body.addEventListener('touchstart', startEngineAudio);
-            document.body.addEventListener('click', startEngineAudio);
+            // تشغيل الصوت عند أول لمسة للأزرار
+            function activateAudioContext() {
+                initAudio();
+                if (audioCtx && audioCtx.state === 'suspended') {
+                    audioCtx.resume();
+                }
+            }
+            document.body.addEventListener('touchstart', activateAudioContext);
+            document.body.addEventListener('click', activateAudioContext);
 
+            // =====================================
+            // إعداد المشهد والبيئة العملاقة
+            // =====================================
             const scene = new THREE.Scene();
             scene.background = new THREE.Color(0x7ec0ee); 
+            scene.fog = new THREE.FogExp2(0x7ec0ee, 0.00015); // ضباب لإعطاء عمق للمدينة الكبيرة
 
-            const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 50000);
+            const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 80000);
             const renderer = new THREE.WebGLRenderer({ antialias: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
             document.body.appendChild(renderer.domElement);
@@ -65,12 +91,12 @@
             scene.add(ambient);
 
             const sun = new THREE.DirectionalLight(0xffffff, 1.3);
-            sun.position.set(500, 1000, 400);
+            sun.position.set(1000, 2000, 800);
             scene.add(sun);
 
-            // الأرضية العشبية الممتدة جداً
+            // تكبير الأرضية العشبية بشكل ضخم جداً (100,000 وحدة)
             const ground = new THREE.Mesh(
-                new THREE.PlaneGeometry(60000, 60000),
+                new THREE.PlaneGeometry(100000, 100000),
                 new THREE.MeshStandardMaterial({ color: 0x448a5f, roughness: 0.9 })
             );
             ground.rotation.x = -Math.PI / 2;
@@ -80,84 +106,63 @@
             // ممر الهبوط والإقلاع الأسفلتي
             // =====================================
             const runwayGroup = new THREE.Group();
-            
             const asphalt = new THREE.Mesh(
-                new THREE.BoxGeometry(160, 0.2, 7000),
+                new THREE.BoxGeometry(180, 0.2, 9000),
                 new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.85 })
             );
             asphalt.position.set(0, 0.1, 0);
             runwayGroup.add(asphalt);
 
-            for (let z = -3300; z <= 3300; z += 150) {
-                const line = new THREE.Mesh(new THREE.BoxGeometry(4, 0.25, 60), new THREE.MeshStandardMaterial({ color: 0xffffff }));
+            for (let z = -4300; z <= 4300; z += 180) {
+                const line = new THREE.Mesh(new THREE.BoxGeometry(5, 0.25, 70), new THREE.MeshStandardMaterial({ color: 0xffffff }));
                 line.position.set(0, 0.2, z);
                 runwayGroup.add(line);
             }
-
-            const leftLine = new THREE.Mesh(new THREE.BoxGeometry(2, 0.24, 7000), new THREE.MeshStandardMaterial({ color: 0xffcc00 }));
-            leftLine.position.set(-78, 0.2, 0);
-            runwayGroup.add(leftLine);
-
-            const rightLine = new THREE.Mesh(new THREE.BoxGeometry(2, 0.24, 7000), new THREE.MeshStandardMaterial({ color: 0xffcc00 }));
-            rightLine.position.set(78, 0.2, 0);
-            runwayGroup.add(rightLine);
-
             scene.add(runwayGroup);
 
             // =====================================
-            // توليد مدينة ضخمة جداً وكثيفة
+            // توليد مدينة ضخمة جداً (600 مبنى عملاق)
             // =====================================
             const collidableObjects = [];
 
             function createRealisticBuilding(x, z) {
-                const w = 50 + Math.random() * 40;
-                const h = 150 + Math.random() * 300; // مباني شاهقة الارتفاع
-                const d = 50 + Math.random() * 40;
+                const w = 60 + Math.random() * 50;
+                const h = 200 + Math.random() * 500; // ناطحات سحاب شاهقة جداً
+                const d = 60 + Math.random() * 50;
 
                 const bMesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshStandardMaterial({ color: 0x2c3e50, roughness: 0.4 }));
                 bMesh.position.set(x, h / 2, z);
                 scene.add(bMesh);
                 collidableObjects.push(bMesh);
 
-                // النوافذ المضيئة للمبنى
-                const winGeo = new THREE.BoxGeometry(w + 0.8, 2, d + 0.8);
+                // أضواء النوافذ المضيئة
+                const winGeo = new THREE.BoxGeometry(w + 1, 2.5, d + 1);
                 const winMat = new THREE.MeshStandardMaterial({ color: 0xfff7e6, emissive: 0xffcc00, emissiveIntensity: 0.6 });
-                for (let y = 30; y < h - 20; y += 30) {
+                for (let y = 40; y < h - 30; y += 40) {
                     const row = new THREE.Mesh(winGeo, winMat);
                     row.position.set(x, y, z);
                     scene.add(row);
                 }
             }
 
-            // برج مراقبة المطار
-            const towerBase = new THREE.Mesh(new THREE.CylinderGeometry(8, 10, 110, 16), new THREE.MeshStandardMaterial({ color: 0xf5f6fa }));
-            towerBase.position.set(180, 55, -200);
-            scene.add(towerBase);
-            collidableObjects.push(towerBase);
-
-            const towerCabin = new THREE.Mesh(new THREE.CylinderGeometry(16, 13, 20, 16), new THREE.MeshStandardMaterial({ color: 0x2f3640, transparent: true, opacity: 0.65 }));
-            towerCabin.position.set(180, 120, -200);
-            scene.add(towerCabin);
-
-            // توليد 250 مبنى عملاق لتغطية الأفق وتكبير مساحة المدينة
-            for (let i = 0; i < 250; i++) {
-                let bx = (Math.random() - 0.5) * 15000;
-                let bz = (Math.random() - 0.5) * 15000;
-                // إبعاد المباني عن مدرج المطار لمنع الاصطدام الفوري
-                if (Math.abs(bx) > 300 || Math.abs(bz) > 3600) {
+            // نشر 600 مبنى في مساحة هائلة جداً حول المطار
+            for (let i = 0; i < 600; i++) {
+                let bx = (Math.random() - 0.5) * 45000;
+                let bz = (Math.random() - 0.5) * 45000;
+                if (Math.abs(bx) > 400 || Math.abs(bz) > 5000) {
                     createRealisticBuilding(bx, bz);
                 }
             }
 
-            // غيوم في السماء
-            for (let i = 0; i < 60; i++) {
-                const cloud = new THREE.Mesh(new THREE.SphereGeometry(50, 8, 8), new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1.0 }));
-                cloud.position.set((Math.random() - 0.5) * 20000, 600 + Math.random() * 400, (Math.random() - 0.5) * 20000);
+            // غيوم كثيفة في الأفق للواقعية
+            for (let i = 0; i < 120; i++) {
+                const cloud = new THREE.Mesh(new THREE.SphereGeometry(80, 8, 8), new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1.0 }));
+                cloud.position.set((Math.random() - 0.5) * 50000, 800 + Math.random() * 600, (Math.random() - 0.5) * 50000);
                 scene.add(cloud);
             }
 
             // =====================================
-            // تصميم أجنحة وهيكل الطائرة
+            // تصميم الطائرة
             // =====================================
             function buildAdvancedAircraft() {
                 const group = new THREE.Group();
@@ -166,64 +171,37 @@
                 const darkMat = new THREE.MeshStandardMaterial({ color: 0x111111 });
 
                 const body = new THREE.Mesh(new THREE.CylinderGeometry(1.4, 1.1, 20, 16), whiteMat);
-                body.rotation.x = Math.PI / 2;
-                group.add(body);
+                body.rotation.x = Math.PI / 2; group.add(body);
 
                 const nose = new THREE.Mesh(new THREE.ConeGeometry(1.4, 4, 16), whiteMat);
-                nose.rotation.x = -Math.PI / 2; nose.position.z = -12;
-                group.add(nose);
+                nose.rotation.x = -Math.PI / 2; nose.position.z = -12; group.add(nose);
 
                 const cockpit = new THREE.Mesh(new THREE.SphereGeometry(0.8, 8, 8), darkMat);
-                cockpit.position.set(0, 0.6, -11.4); cockpit.scale.set(1.3, 0.5, 1.6);
-                group.add(cockpit);
+                cockpit.position.set(0, 0.6, -11.4); cockpit.scale.set(1.3, 0.5, 1.6); group.add(cockpit);
 
-                // أجنحة انسيابية حقيقية عريضة
                 const wingShape = new THREE.Shape();
-                wingShape.moveTo(0, 0);
-                wingShape.lineTo(14, -4); 
-                wingShape.lineTo(13.5, -5.5);
-                wingShape.lineTo(0, -2.5);
-
+                wingShape.moveTo(0, 0); wingShape.lineTo(14, -4); wingShape.lineTo(13.5, -5.5); wingShape.lineTo(0, -2.5);
                 const extrudeSettings = { depth: 0.2, bevelEnabled: true, bevelSegments: 2, steps: 1, bevelSize: 0.05, bevelThickness: 0.05 };
                 
                 const wingR = new THREE.Mesh(new THREE.ExtrudeGeometry(wingShape, extrudeSettings), whiteMat);
-                wingR.rotation.x = Math.PI / 2; wingR.position.set(0.8, -0.2, 1);
-                group.add(wingR);
+                wingR.rotation.x = Math.PI / 2; wingR.position.set(0.8, -0.2, 1); group.add(wingR);
 
                 const wingL = new THREE.Mesh(new THREE.ExtrudeGeometry(wingShape, extrudeSettings), whiteMat);
-                wingL.rotation.x = Math.PI / 2; wingL.rotation.y = Math.PI; wingL.position.set(-0.8, -0.2, 1);
-                group.add(wingL);
-
-                const engLeft = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.5, 4, 12), blueMat);
-                engLeft.rotation.x = Math.PI / 2; engLeft.position.set(-5, -1.0, -1);
-                group.add(engLeft);
-
-                const engRight = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.5, 4, 12), blueMat);
-                engRight.rotation.x = Math.PI / 2; engRight.position.set(5, -1.0, -1);
-                group.add(engRight);
+                wingL.rotation.x = Math.PI / 2; wingL.rotation.y = Math.PI; wingL.position.set(-0.8, -0.2, 1); group.add(wingL);
 
                 const tailFin = new THREE.Mesh(new THREE.BoxGeometry(0.3, 4.5, 3.5), blueMat);
-                tailFin.position.set(0, 2.5, 9); tailFin.rotation.x = -Math.PI / 5;
-                group.add(tailFin);
-
-                const tailWingR = new THREE.Mesh(new THREE.BoxGeometry(5, 0.15, 2.2), whiteMat);
-                tailWingR.position.set(2.8, 0, 9.5); tailWingR.rotation.y = Math.PI / 6;
-                group.add(tailWingR);
-
-                const tailWingL = new THREE.Mesh(new THREE.BoxGeometry(5, 0.15, 2.2), whiteMat);
-                tailWingL.position.set(-2.8, 0, 9.5); tailWingL.rotation.y = -Math.PI / 6;
-                group.add(tailWingL);
+                tailFin.position.set(0, 2.5, 9); tailFin.rotation.x = -Math.PI / 5; group.add(tailFin);
 
                 group.scale.set(0.385, 0.385, 0.385);
                 return group;
             }
 
             const aircraft = buildAdvancedAircraft();
-            aircraft.position.set(0, 2.2, 2500); 
+            aircraft.position.set(0, 2.2, 3500); 
             scene.add(aircraft);
 
             // =====================================
-            // محرك الفيزياء ونظام التحكم بالهبوط والاصطدام
+            // نظام الحركة والفيزياء
             // =====================================
             let speed = 0, fuel = 100, altitude = 2.2, pitch = 0, verticalSpeed = 0;
             let flightPhase = "تدريج (TAXI)";
@@ -235,9 +213,9 @@
 
             function bindBtn(id, key) {
                 const btn = document.getElementById(id); if (!btn) return;
-                btn.addEventListener("touchstart", (e) => { e.preventDefault(); startEngineAudio(); keys[key] = true; });
+                btn.addEventListener("touchstart", (e) => { e.preventDefault(); activateAudioContext(); keys[key] = true; });
                 btn.addEventListener("touchend", () => { keys[key] = false; });
-                btn.addEventListener("mousedown", () => { startEngineAudio(); keys[key] = true; });
+                btn.addEventListener("mousedown", () => { activateAudioContext(); keys[key] = true; });
                 btn.addEventListener("mouseup", () => { keys[key] = false; });
             }
 
@@ -248,31 +226,28 @@
             function updateFlight() {
                 if (isCrashed) return;
 
-                if (keys["up"] && fuel > 0) speed += 0.006;
-                if (keys["down"]) speed -= 0.006;
-                speed = Math.max(0, Math.min(0.9, speed)) * 0.996;
+                if (keys["up"] && fuel > 0) speed += 0.007;
+                if (keys["down"]) speed -= 0.007;
+                speed = Math.max(0, Math.min(0.95, speed)) * 0.996;
 
-                // تحديث سرعة وقوة الصوت مع حركة المحرك
-                if (audioStarted) {
-                    bgAudio.playbackRate = 0.85 + (speed * 1.2);
-                    bgAudio.volume = 0.4 + (speed * 0.6);
+                // تحديث تأثير الصوت الاصطناعي برمجياً بناءً على السرعة
+                if (mainGain && mainOsc) {
+                    mainGain.gain.setTargetAtTime(speed * 0.25, audioCtx.currentTime, 0.1);
+                    mainOsc.frequency.setTargetAtTime(60 + (speed * 140), audioCtx.currentTime, 0.1);
                 }
 
                 if (keys["left"]) aircraft.rotation.y += 0.022;
                 if (keys["right"]) aircraft.rotation.y -= 0.022;
                 
-                // تفعيل زوايا الإقلاع والهبوط الفورية
-                if (keys["w"]) pitch += 0.008; // رفع أنف الطائرة للإقلاع والارتفاع
-                if (keys["s"]) pitch -= 0.008; // خفض أنف الطائرة لأسفل لغرض الهبوط
+                if (keys["w"]) pitch += 0.008; 
+                if (keys["s"]) pitch -= 0.008; 
                 pitch = Math.max(-0.3, Math.min(0.3, pitch));
                 aircraft.rotation.x = pitch;
 
-                // قوى الرفع والجاذبية الهوائية للهبوط المرن
-                let lift = (speed > 0.25) ? (speed - 0.25) * 0.03 * (1 - pitch) : 0;
-                verticalSpeed += lift - 0.004;
+                let lift = (speed > 0.25) ? (speed - 0.25) * 0.032 * (1 - pitch) : 0;
+                verticalSpeed += lift - 0.0042;
                 altitude += verticalSpeed;
 
-                // منع تخطي ممر المطار للأسفل والاستقرار الكامل على الأرض عند الهبوط
                 if (altitude < 2.2) { 
                     altitude = 2.2; 
                     verticalSpeed = 0; 
@@ -283,16 +258,16 @@
                 flightPhase = altitude < 3.8 ? "تدريج (TAXI)" : "طيران مستقر (CRUISE)";
 
                 const direction = new THREE.Vector3(0, 0, -1).applyQuaternion(aircraft.quaternion);
-                aircraft.position.addScaledVector(direction, speed * 15);
-                fuel = Math.max(0, fuel - (speed * 0.003));
+                aircraft.position.addScaledVector(direction, speed * 18);
+                fuel = Math.max(0, fuel - (speed * 0.002));
 
-                // فحص نظام الاصطدام الحقيقي لمنع اختراق المباني
+                // فحص نظام الاصطدامات بالمباني
                 const aircraftBox = new THREE.Box3().setFromObject(aircraft);
                 for (let i = 0; i < collidableObjects.length; i++) {
                     const bBox = new THREE.Box3().setFromObject(collidableObjects[i]);
                     if (aircraftBox.intersectsBox(bBox)) {
                         isCrashed = true;
-                        bgAudio.pause();
+                        if (mainGain) mainGain.gain.setValueAtTime(0, audioCtx.currentTime);
                         document.getElementById("crashScreen").style.display = "flex";
                         break;
                     }
