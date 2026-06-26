@@ -539,9 +539,9 @@ aircraft.position.set(
 0
 );
 aircraft.scale.set(
-0.25,
-0.25,
-0.25
+0.30,
+0.30,
+0.30
 );
 
 scene.add(
