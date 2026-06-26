@@ -1,5 +1,4 @@
 import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
-// استيراد أداة تحميل المجسمات الخارجية ثلاثية الأبعاد
 import { GLTFLoader } from 'https://unpkg.com/three@0.160.0/examples/jsm/loaders/GLTFLoader.js';
 
 // =====================================
@@ -135,23 +134,49 @@ for (let i = 0; i < 600; i++) {
 }
 
 // =====================================
-// نظام تحميل الطائرة ثلاثية الأبعاد الحقيقية
+// دالة بناء الطائرة الافتراضية برمجياً (الاحتياطية)
+// =====================================
+function buildFallbackAircraft() {
+    const group = new THREE.Group();
+    const material = new THREE.MeshStandardMaterial({ color: 0xf5f5f5 });
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 24, 24), material);
+    body.rotation.z = Math.PI / 2;
+    group.add(body);
+    const nose = new THREE.Mesh(new THREE.ConeGeometry(1, 4, 24), material);
+    nose.rotation.z = -Math.PI / 2; nose.position.x = 14;
+    group.add(nose);
+    const wing = new THREE.Mesh(new THREE.BoxGeometry(28, 0.4, 6), material);
+    group.add(wing);
+    const tail = new THREE.Mesh(new THREE.BoxGeometry(10, 0.3, 3), material);
+    tail.position.set(-10, 0, 0); group.add(tail);
+    const fin = new THREE.Mesh(new THREE.BoxGeometry(0.5, 4, 3), new THREE.MeshStandardMaterial({ color: 0xff3333 }));
+    fin.position.set(-10, 3, 0); group.add(fin);
+    group.scale.set(0.25, 0.25, 0.25);
+    return group;
+}
+
+// =====================================
+// تجهيز الطائرة الأساسية وحمايتها من الانهيار
 // =====================================
 const aircraft = new THREE.Group();
 aircraft.position.set(0, 2, 0);
 scene.add(aircraft);
 
+// إنشاء الطائرة الاحتياطية فوراً حتى لا تظهر شاشة سوداء أثناء انتظار التحميل
+let fallbackModel = buildFallbackAircraft();
+aircraft.add(fallbackModel);
+
 const loader = new GLTFLoader();
-// رابط مباشر لمجسم طائرة ركاب حقيقي من مستودع خبير ومفتوح المصدر
 const airplaneURL = 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/Airplane/glTF-Binary/Airplane.glb';
 
 loader.load(
     airplaneURL,
     function (gltf) {
+        // إذا نجح التحميل، نقوم بحذف الطائرة البدائية البديلة واستبدالها بالاحترافية
+        aircraft.remove(fallbackModel);
         const model = gltf.scene;
-        // ضبط حجم واتجاه الطائرة الحقيقية لتتناسب مع أبعاد اللعبة الحالية
         model.scale.set(0.18, 0.18, 0.18); 
-        model.rotation.y = Math.PI; // تدويرها للأمام
+        model.rotation.y = Math.PI;
         
         model.traverse(function (node) {
             if (node.isMesh) {
@@ -160,16 +185,17 @@ loader.load(
             }
         });
         aircraft.add(model);
-        console.log("تم تحميل الطائرة ثلاثية الأبعاد الاحترافية!");
+        console.log("تم تحميل الطائرة الاحترافية بنجاح والاستغناء عن البديل!");
     },
     undefined,
     function (error) {
-        console.error("فشل تحميل المجسم الخارجي، تم تشغيل الطائرة الاحتياطية برمجياً:", error);
+        // في حال حدوث الحظر أو فشل الإنترنت، يستمر البرنامج في العمل بالطائرة الاحتياطية دون مشاكل
+        console.warn("تم حجب رابط المجسم أو الإنترنت ضعيف، جاري الاستمرار بالطائرة البرمجية الآمنة.");
     }
 );
 
 // =====================================
-// طائرات الذكاء الاصطناعي (AI Traffic)
+// طائرات الذكاء الاصطناعي (AI Traffic) الآمنة
 // =====================================
 const aiAircrafts = [];
 function createAIAircraft(startX, startZ, targetX, targetZ) {
@@ -177,13 +203,17 @@ function createAIAircraft(startX, startZ, targetX, targetZ) {
     aiGroup.position.set(startX, 300, startZ);
     scene.add(aiGroup);
 
-    // تحميل نفس مجسم الطائرة الحقيقي لحركة المرور الجوي أيضاً
+    // نضع لها طائرة احتياطية مسبقاً
+    let aiFallback = buildFallbackAircraft();
+    aiGroup.add(aiFallback);
+
     loader.load(airplaneURL, function (gltf) {
+        aiGroup.remove(aiFallback);
         const model = gltf.scene;
         model.scale.set(0.15, 0.15, 0.15);
         model.rotation.y = Math.PI;
         aiGroup.add(model);
-    });
+    }, undefined, function(e){});
 
     aiAircrafts.push({ mesh: aiGroup, target: new THREE.Vector3(targetX, 300, targetZ) });
 }
@@ -210,7 +240,7 @@ const takeoffSpeed = 0.25;
 const keys = {};
 
 // =====================================
-// نظام التحكم
+// نظام التحكم والتصميم المتجاوب مع الهواتف
 // =====================================
 document.addEventListener("keydown", e => { keys[e.key] = true; });
 document.addEventListener("keyup", e => { keys[e.key] = false; });
@@ -238,6 +268,7 @@ document.head.appendChild(style);
 
 function bindButton(id, key) {
     const btn = document.getElementById(id);
+    if(!btn) return;
     const setKey = (val) => { keys[key] = val; if(key==="W"||key==="S") keys[key.toLowerCase()] = val; };
     btn.addEventListener("touchstart", (e) => { e.preventDefault(); setKey(true); });
     btn.addEventListener("touchend", () => setKey(false));
@@ -267,82 +298,88 @@ document.body.appendChild(miniMap);
 const miniCtx = miniMap.getContext("2d");
 
 // =====================================
-// التحديثات والفيزياء
+// التحديثات وفيزياء الطيران المحمية
 // =====================================
 function updateFlight() {
-    if (keys["ArrowUp"] && fuel > 0) speed += 0.003;
-    if (keys["ArrowDown"]) speed -= 0.003;
-    speed = Math.max(0, Math.min(1, speed));
-    speed *= 0.999;
+    try {
+        if (keys["ArrowUp"] && fuel > 0) speed += 0.003;
+        if (keys["ArrowDown"]) speed -= 0.003;
+        speed = Math.max(0, Math.min(1, speed));
+        speed *= 0.999;
 
-    if (keys["ArrowLeft"]) aircraft.rotation.y += 0.025;
-    if (keys["ArrowRight"]) aircraft.rotation.y -= 0.025;
-    if (keys["W"] || keys["w"]) pitch += 0.01;
-    if (keys["S"] || keys["s"]) pitch -= 0.01;
-    pitch = Math.max(-0.5, Math.min(0.5, pitch));
-    aircraft.rotation.z = -pitch;
+        if (keys["ArrowLeft"]) aircraft.rotation.y += 0.025;
+        if (keys["ArrowRight"]) aircraft.rotation.y -= 0.025;
+        if (keys["W"] || keys["w"]) pitch += 0.01;
+        if (keys["S"] || keys["s"]) pitch -= 0.01;
+        pitch = Math.max(-0.5, Math.min(0.5, pitch));
+        aircraft.rotation.z = -pitch;
 
-    let lift = 0;
-    if (speed > 0.22 && speed > takeoffSpeed) {
-        lift = (speed - takeoffSpeed) * speed * liftFactor * 2 * (1 + pitch);
-    }
+        let lift = 0;
+        if (speed > 0.22 && speed > takeoffSpeed) {
+            lift = (speed - takeoffSpeed) * speed * liftFactor * 2 * (1 + pitch);
+        }
 
-    verticalSpeed += lift - gravity;
-    altitude += verticalSpeed;
+        verticalSpeed += lift - gravity;
+        altitude += verticalSpeed;
 
-    if (altitude < 2) {
-        altitude = 2;
-        verticalSpeed = 0;
-    }
-    aircraft.position.y = altitude;
+        if (altitude < 2) {
+            altitude = 2;
+            verticalSpeed = 0;
+        }
+        aircraft.position.y = altitude;
 
-    if (altitude < 3) {
-        flightPhase = "تدريج (TAXI)";
-        if (speed === 0 && fuel < 100) {
-            for (let ap of airports) {
-                if (aircraft.position.distanceTo(ap.position) < 500) {
-                    fuel = Math.min(100, fuel + 0.2);
-                    flightPhase = "جاري إعادة التعبئة بالوقود...";
+        if (altitude < 3) {
+            flightPhase = "تدريج (TAXI)";
+            if (speed === 0 && fuel < 100) {
+                for (let ap of airports) {
+                    if (aircraft.position.distanceTo(ap.position) < 500) {
+                        fuel = Math.min(100, fuel + 0.2);
+                        flightPhase = "جاري إعادة التعبئة بالوقود...";
+                    }
                 }
             }
+        } else if (altitude < 50) {
+            flightPhase = "إقلاع (TAKEOFF)";
+        } else if (altitude < 300) {
+            flightPhase = "طيران مستقر (CRUISE)";
+        } else {
+            flightPhase = "ارتفاع شاهق (HIGH ALTITUDE)";
         }
-    } else if (altitude < 50) {
-        flightPhase = "إقلاع (TAKEOFF)";
-    } else if (altitude < 300) {
-        flightPhase = "طيران مستقر (CRUISE)";
-    } else {
-        flightPhase = "ارتفاع شاهق (HIGH ALTITUDE)";
-    }
 
-    const direction = new THREE.Vector3(0, 0, -1).applyQuaternion(aircraft.quaternion);
-    aircraft.position.addScaledVector(direction, speed * 8);
+        const direction = new THREE.Vector3(0, 0, -1).applyQuaternion(aircraft.quaternion);
+        aircraft.position.addScaledVector(direction, speed * 8);
 
-    fuel = Math.max(0, fuel - (speed * 0.01));
+        fuel = Math.max(0, fuel - (speed * 0.01));
+    } catch(e) { console.error(e); }
 }
 
 function updateCamera() {
-    const offset = new THREE.Vector3(0, 12, 60).applyQuaternion(aircraft.quaternion);
-    camera.position.copy(aircraft.position).add(offset);
-    const lookPoint = aircraft.position.clone().add(new THREE.Vector3(0, 0, -1).applyQuaternion(aircraft.quaternion).multiplyScalar(150));
-    camera.lookAt(lookPoint);
+    try {
+        const offset = new THREE.Vector3(0, 12, 60).applyQuaternion(aircraft.quaternion);
+        camera.position.copy(aircraft.position).add(offset);
+        const lookPoint = aircraft.position.clone().add(new THREE.Vector3(0, 0, -1).applyQuaternion(aircraft.quaternion).multiplyScalar(150));
+        camera.lookAt(lookPoint);
+    } catch(e) {}
 }
 
 function updateMiniMap() {
-    miniCtx.clearRect(0, 0, 200, 200);
-    miniCtx.fillStyle = "green";
-    miniCtx.fillRect(0, 0, 200, 200);
+    try {
+        miniCtx.clearRect(0, 0, 200, 200);
+        miniCtx.fillStyle = "green";
+        miniCtx.fillRect(0, 0, 200, 200);
 
-    const drawAirportMarker = (x, z, color) => {
-        miniCtx.fillStyle = color;
-        miniCtx.beginPath();
-        miniCtx.arc(100 + x / 80, 100 + z / 80, 4, 0, Math.PI * 2);
-        miniCtx.fill();
-    };
+        const drawAirportMarker = (x, z, color) => {
+            miniCtx.fillStyle = color;
+            miniCtx.beginPath();
+            miniCtx.arc(100 + x / 80, 100 + z / 80, 4, 0, Math.PI * 2);
+            miniCtx.fill();
+        };
 
-    drawAirportMarker(0, 0, "white");
-    drawAirportMarker(2500, 3000, "yellow");
-    drawAirportMarker(-3200, 2800, "orange");
-    drawAirportMarker(aircraft.position.x, aircraft.position.z, "red");
+        drawAirportMarker(0, 0, "white");
+        drawAirportMarker(2500, 3000, "yellow");
+        drawAirportMarker(-3200, 2800, "orange");
+        drawAirportMarker(aircraft.position.x, aircraft.position.z, "red");
+    } catch(e) {}
 }
 
 function updateHUD() {
@@ -356,19 +393,21 @@ function updateHUD() {
 }
 
 function updateAI() {
-    for (const ai of aiAircrafts) {
-        const dir = new THREE.Vector3().subVectors(ai.target, ai.mesh.position);
-        const distance = dir.length();
-        dir.normalize();
-        ai.mesh.position.addScaledVector(dir, 2);
-        ai.mesh.lookAt(ai.target);
+    try {
+        for (const ai of aiAircrafts) {
+            const dir = new THREE.Vector3().subVectors(ai.target, ai.mesh.position);
+            const distance = dir.length();
+            dir.normalize();
+            ai.mesh.position.addScaledVector(dir, 2);
+            ai.mesh.lookAt(ai.target);
 
-        if (distance < 100) {
-            const oldTarget = ai.target.clone();
-            ai.target = Math.random() > 0.5 ? new THREE.Vector3(2500, 300, 3000) : new THREE.Vector3(-3200, 300, 2800);
-            if (oldTarget.x === ai.target.x) ai.target = new THREE.Vector3(0, 300, 0);
+            if (distance < 100) {
+                const oldTarget = ai.target.clone();
+                ai.target = Math.random() > 0.5 ? new THREE.Vector3(2500, 300, 3000) : new THREE.Vector3(-3200, 300, 2800);
+                if (oldTarget.x === ai.target.x) ai.target = new THREE.Vector3(0, 300, 0);
+            }
         }
-    }
+    } catch(e) {}
 }
 
 let currentMission = { name: "طِر إلى عدن", target: adenAirport.position, reward: 5000, completed: false };
@@ -406,7 +445,7 @@ window.addEventListener("resize", () => {
 });
 
 // =====================================
-// حلقة اللعب الأساسية (Animation Loop)
+// حلقة اللعب المحمية بالكامل
 // =====================================
 function animate() {
     requestAnimationFrame(animate);
@@ -444,4 +483,5 @@ function animate() {
     renderer.render(scene, camera);
 }
 
+// تشغيل اللعبة فوراً
 animate();
