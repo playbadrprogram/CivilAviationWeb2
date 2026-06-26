@@ -49,7 +49,7 @@
             sun.position.set(200, 400, 200);
             scene.add(sun);
 
-            // الأرضية
+            // الأرضية مع ممر الإقلاع الرئيسي الممتد طويلاً تحت الطائرة
             const ground = new THREE.Mesh(
                 new THREE.PlaneGeometry(15000, 15000),
                 new THREE.MeshStandardMaterial({ color: 0x2e7d32 })
@@ -62,12 +62,12 @@
             // =====================================
             const airports = [];
             function createAirport(name, x, z) {
-                const runway = new THREE.Mesh(new THREE.BoxGeometry(80, 0.1, 1000), new THREE.MeshStandardMaterial({ color: 0x333333 }));
+                const runway = new THREE.Mesh(new THREE.BoxGeometry(100, 0.1, 1500), new THREE.MeshStandardMaterial({ color: 0x333333 }));
                 runway.position.set(x, 0.05, z);
                 scene.add(runway);
 
                 const terminal = new THREE.Mesh(new THREE.BoxGeometry(120, 25, 60), new THREE.MeshStandardMaterial({ color: 0xcccccc }));
-                terminal.position.set(x + 120, 12, z);
+                terminal.position.set(x + 140, 12, z);
                 scene.add(terminal);
 
                 airports.push({ name: name, position: new THREE.Vector3(x, 0, z) });
@@ -88,7 +88,7 @@
                 const building = new THREE.Mesh(new THREE.BoxGeometry(25, h, 25), new THREE.MeshStandardMaterial({ color: 0x555555 }));
                 let x = (Math.random() - 0.5) * 6000;
                 let z = (Math.random() - 0.5) * 6000;
-                if (Math.sqrt(x*x + z*z) > 600) {
+                if (Math.sqrt(x*x + z*z) > 800) {
                     building.position.set(x, h / 2, z);
                     scene.add(building);
                     buildings.push(building);
@@ -96,7 +96,7 @@
             }
 
             // =====================================
-            // هندسة بناء الطائرة برمجياً بالكامل تفصيلياً (3D)
+            // هندسة بناء الطائرة برمجياً بالكامل تفصيلياً (معدلة طولياً)
             // =====================================
             function buildDetailedAircraft() {
                 const aircraftGroup = new THREE.Group();
@@ -106,65 +106,65 @@
                 const blueMat = new THREE.MeshStandardMaterial({ color: 0x0a3c7a, roughness: 0.5 });
                 const darkMat = new THREE.MeshStandardMaterial({ color: 0x222222 });
 
-                // 1. جسم الطائرة الرئيسي (Fuselage)
+                // 1. جسم الطائرة الرئيسي (Fuselage) - ممتد على المحور Z (طولياً)
                 const body = new THREE.Mesh(new THREE.CylinderGeometry(1.4, 1.4, 18, 16), whiteMat);
-                body.rotation.z = Math.PI / 2;
+                body.rotation.x = Math.PI / 2; // تدوير ليصبح ممتداً للأمام والخلف
                 aircraftGroup.add(body);
 
-                // 2. مقدمة الطائرة المدببة (Cockpit Nose)
+                // 2. مقدمة الطائرة المدببة (Cockpit Nose) - متجهة للأمام (Z سالب)
                 const nose = new THREE.Mesh(new THREE.ConeGeometry(1.4, 4, 16), whiteMat);
-                nose.rotation.z = -Math.PI / 2;
-                nose.position.x = 11;
+                nose.rotation.x = -Math.PI / 2;
+                nose.position.z = -11;
                 aircraftGroup.add(nose);
 
                 // زجاج كابينة القيادة
                 const cockpitWindow = new THREE.Mesh(new THREE.SphereGeometry(0.8, 8, 8), darkMat);
-                cockpitWindow.position.set(10.5, 0.6, 0);
-                cockpitWindow.scale.set(1.5, 0.5, 1);
+                cockpitWindow.position.set(0, 0.6, -10.5);
+                cockpitWindow.scale.set(1, 0.5, 1.5);
                 aircraftGroup.add(cockpitWindow);
 
-                // 3. الأجنحة الرئيسية المتطورة (Main Wings)
-                const wingLeft = new THREE.Mesh(new THREE.BoxGeometry(5, 0.2, 12), whiteMat);
-                wingLeft.position.set(0, -0.2, 6);
-                wingLeft.rotation.y = -Math.PI / 6; // مائلة للخلف كطائرات الركاب
+                // 3. الأجنحة الرئيسية المتطورة (Main Wings) - ممتدة عرضياً بدقة
+                const wingLeft = new THREE.Mesh(new THREE.BoxGeometry(12, 0.2, 5), whiteMat);
+                wingLeft.position.set(-6, -0.2, 0);
+                wingLeft.rotation.y = -Math.PI / 6; // مائل للخلف انسيابياً
                 aircraftGroup.add(wingLeft);
 
-                const wingRight = new THREE.Mesh(new THREE.BoxGeometry(5, 0.2, 12), whiteMat);
-                wingRight.position.set(0, -0.2, -6);
+                const wingRight = new THREE.Mesh(new THREE.BoxGeometry(12, 0.2, 5), whiteMat);
+                wingRight.position.set(6, -0.2, 0);
                 wingRight.rotation.y = Math.PI / 6;
                 aircraftGroup.add(wingRight);
 
-                // 4. المحركات النفاثة تحت الأجنحة (Engines)
+                // 4. المحركات النفاثة تحت الأجنحة (Engines) - متجهة للأمام طويلاً
                 const engineLeft = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.4, 3, 12), blueMat);
-                engineLeft.rotation.z = Math.PI / 2;
-                engineLeft.position.set(1, -0.9, 4);
+                engineLeft.rotation.x = Math.PI / 2;
+                engineLeft.position.set(-4, -0.9, -1);
                 aircraftGroup.add(engineLeft);
 
                 const engineRight = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.4, 3, 12), blueMat);
-                engineRight.rotation.z = Math.PI / 2;
-                engineRight.position.set(1, -0.9, -4);
+                engineRight.rotation.x = Math.PI / 2;
+                engineRight.position.set(4, -0.9, -1);
                 aircraftGroup.add(engineRight);
 
-                // 5. مجموعة الذيل (Tail Assembly)
+                // 5. مجموعة الذيل الخلفي (Tail Assembly)
                 // الموازن العمودي الخلفي (Vertical Stabilizer)
-                const tailFin = new THREE.Mesh(new THREE.BoxGeometry(3, 4, 0.3), blueMat);
-                tailFin.position.set(-8, 2.2, 0);
-                tailFin.rotation.z = Math.PI / 6;
+                const tailFin = new THREE.Mesh(new THREE.BoxGeometry(0.3, 4, 3), blueMat);
+                tailFin.position.set(0, 2.2, 8);
+                tailFin.rotation.x = -Math.PI / 6;
                 aircraftGroup.add(tailFin);
 
                 // الموازن الأفقي الخلفي (Horizontal Stabilizers)
-                const tailWingLeft = new THREE.Mesh(new THREE.BoxGeometry(2, 0.15, 4), whiteMat);
-                tailWingLeft.position.set(-8.5, 0, 2);
+                const tailWingLeft = new THREE.Mesh(new THREE.BoxGeometry(4, 0.15, 2), whiteMat);
+                tailWingLeft.position.set(-2, 0, 8.5);
                 tailWingLeft.rotation.y = -Math.PI / 6;
                 aircraftGroup.add(tailWingLeft);
 
-                const tailWingRight = new THREE.Mesh(new THREE.BoxGeometry(2, 0.15, 4), whiteMat);
-                tailWingRight.position.set(-8.5, 0, -2);
+                const tailWingRight = new THREE.Mesh(new THREE.BoxGeometry(4, 0.15, 2), whiteMat);
+                tailWingRight.position.set(2, 0, 8.5);
                 tailWingRight.rotation.y = Math.PI / 6;
                 aircraftGroup.add(tailWingRight);
 
-                // تصغير حجم الكائن الإجمالي ليتناسب مع أبعاد اللعبة
-                aircraftGroup.scale.set(0.35, 0.35, 0.35);
+                // تكبير حجم الطائرة الكلي بنسبة 10% (من 0.35 إلى 0.385)
+                aircraftGroup.scale.set(0.385, 0.385, 0.385);
                 return aircraftGroup;
             }
 
@@ -208,10 +208,10 @@
                 if (keys["s"]) pitch -= 0.01;
                 pitch = Math.max(-0.4, Math.min(0.4, pitch));
                 
-                // تدوير الطائرة بصرياً لتعطي محاكاة حقيقية عند الارتفاع والانخفاض
-                aircraft.rotation.z = -pitch;
+                // التحكم بزاوية الارتفاع والاصطدام (الـ Pitch ممتد حول المحور X الآن)
+                aircraft.rotation.x = pitch;
 
-                let lift = (speed > 0.22) ? (speed - 0.22) * 0.025 * (1 + pitch) : 0;
+                let lift = (speed > 0.22) ? (speed - 0.22) * 0.025 * (1 - pitch) : 0;
                 verticalSpeed += lift - 0.003;
                 altitude += verticalSpeed;
 
@@ -220,20 +220,21 @@
 
                 flightPhase = altitude < 4 ? "تدريج (TAXI)" : "طيران مستقر (CRUISE)";
 
+                // دفع الطائرة للأمام باتجاه مقدمتها الصحيحة (Z سالب)
                 const direction = new THREE.Vector3(0, 0, -1).applyQuaternion(aircraft.quaternion);
                 aircraft.position.addScaledVector(direction, speed * 12);
                 fuel = Math.max(0, fuel - (speed * 0.005));
             }
 
-            // حلقة اللعب
+            // حلقة اللعب والتحديث المستمر
             function animate() {
                 requestAnimationFrame(animate);
                 updateFlight();
 
-                // الكاميرا تتبع الطائرة من مسافة مناسبة لرؤية المجسم بالكامل
-                const offset = new THREE.Vector3(0, 10, 50).applyQuaternion(aircraft.quaternion);
+                // الكاميرا تتبع الطائرة من الخلف بشكل طولي متناسق ومريح للرؤية
+                const offset = new THREE.Vector3(0, 8, 48).applyQuaternion(aircraft.quaternion);
                 camera.position.copy(aircraft.position).add(offset);
-                camera.lookAt(aircraft.position);
+                camera.lookAt(aircraft.position.clone().add(new THREE.Vector3(0, 2, -10).applyQuaternion(aircraft.quaternion)));
 
                 // تحديث العدادات
                 hud.innerHTML = `<b>السرعة:</b> ${Math.round(speed * 1200)} عقدة<br><b>الارتفاع:</b> ${Math.round(altitude * 10)} قدم<br><b>الوقود:</b> ${Math.round(fuel)} %`;
