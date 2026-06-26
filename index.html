@@ -14,7 +14,6 @@
     </style>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 </head>
 <body>
 
@@ -28,7 +27,6 @@
 </div>
 
 <script>
-    // التأكد من تحميل مكتبة Three.js قبل تشغيل الكود لمنع الشاشة السوداء
     window.addEventListener('DOMContentLoaded', () => {
         try {
             // =====================================
@@ -43,12 +41,12 @@
             renderer.shadowMap.enabled = true;
             document.body.appendChild(renderer.domElement);
 
-            // الإضاءة
-            const ambient = new THREE.AmbientLight(0xffffff, 0.9);
+            // الإضاءة المشعة لظهور تفاصيل الطائرة
+            const ambient = new THREE.AmbientLight(0xffffff, 0.8);
             scene.add(ambient);
 
-            const sun = new THREE.DirectionalLight(0xffffff, 1.5);
-            sun.position.set(500, 800, 500);
+            const sun = new THREE.DirectionalLight(0xffffff, 1.2);
+            sun.position.set(200, 400, 200);
             scene.add(sun);
 
             // الأرضية
@@ -60,7 +58,7 @@
             scene.add(ground);
 
             // =====================================
-            // المطارات
+            // المطارات والمباني والغيوم
             // =====================================
             const airports = [];
             function createAirport(name, x, z) {
@@ -78,20 +76,19 @@
             createAirport("مطار عدن", 2500, 3000);
             createAirport("مطار المكلا", -3200, 2800);
 
-            // البيئة المحيطة (الغيوم والمباني الخفيفة لتناسب الهواتف)
-            for (let i = 0; i < 60; i++) {
-                const cloud = new THREE.Mesh(new THREE.SphereGeometry(20, 8, 8), new THREE.MeshStandardMaterial({ color: 0xffffff }));
-                cloud.position.set((Math.random() - 0.5) * 10000, 200 + Math.random() * 200, (Math.random() - 0.5) * 10000);
+            for (let i = 0; i < 50; i++) {
+                const cloud = new THREE.Mesh(new THREE.SphereGeometry(25, 8, 8), new THREE.MeshStandardMaterial({ color: 0xffffff }));
+                cloud.position.set((Math.random() - 0.5) * 10000, 250 + Math.random() * 200, (Math.random() - 0.5) * 10000);
                 scene.add(cloud);
             }
 
             const buildings = [];
-            for (let i = 0; i < 200; i++) {
-                const h = 40 + Math.random() * 120;
-                const building = new THREE.Mesh(new THREE.BoxGeometry(20, h, 20), new THREE.MeshStandardMaterial({ color: 0x555555 }));
+            for (let i = 0; i < 150; i++) {
+                const h = 50 + Math.random() * 100;
+                const building = new THREE.Mesh(new THREE.BoxGeometry(25, h, 25), new THREE.MeshStandardMaterial({ color: 0x555555 }));
                 let x = (Math.random() - 0.5) * 6000;
                 let z = (Math.random() - 0.5) * 6000;
-                if (Math.sqrt(x*x + z*z) > 500) {
+                if (Math.sqrt(x*x + z*z) > 600) {
                     building.position.set(x, h / 2, z);
                     scene.add(building);
                     buildings.push(building);
@@ -99,40 +96,84 @@
             }
 
             // =====================================
-            // بناء الطائرة الافتراضية فوراً (حماية ضد الشاشة السوداء)
+            // هندسة بناء الطائرة برمجياً بالكامل تفصيلياً (3D)
             // =====================================
-            const aircraft = new THREE.Group();
+            function buildDetailedAircraft() {
+                const aircraftGroup = new THREE.Group();
+
+                // المواد والألوان
+                const whiteMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.4 });
+                const blueMat = new THREE.MeshStandardMaterial({ color: 0x0a3c7a, roughness: 0.5 });
+                const darkMat = new THREE.MeshStandardMaterial({ color: 0x222222 });
+
+                // 1. جسم الطائرة الرئيسي (Fuselage)
+                const body = new THREE.Mesh(new THREE.CylinderGeometry(1.4, 1.4, 18, 16), whiteMat);
+                body.rotation.z = Math.PI / 2;
+                aircraftGroup.add(body);
+
+                // 2. مقدمة الطائرة المدببة (Cockpit Nose)
+                const nose = new THREE.Mesh(new THREE.ConeGeometry(1.4, 4, 16), whiteMat);
+                nose.rotation.z = -Math.PI / 2;
+                nose.position.x = 11;
+                aircraftGroup.add(nose);
+
+                // زجاج كابينة القيادة
+                const cockpitWindow = new THREE.Mesh(new THREE.SphereGeometry(0.8, 8, 8), darkMat);
+                cockpitWindow.position.set(10.5, 0.6, 0);
+                cockpitWindow.scale.set(1.5, 0.5, 1);
+                aircraftGroup.add(cockpitWindow);
+
+                // 3. الأجنحة الرئيسية المتطورة (Main Wings)
+                const wingLeft = new THREE.Mesh(new THREE.BoxGeometry(5, 0.2, 12), whiteMat);
+                wingLeft.position.set(0, -0.2, 6);
+                wingLeft.rotation.y = -Math.PI / 6; // مائلة للخلف كطائرات الركاب
+                aircraftGroup.add(wingLeft);
+
+                const wingRight = new THREE.Mesh(new THREE.BoxGeometry(5, 0.2, 12), whiteMat);
+                wingRight.position.set(0, -0.2, -6);
+                wingRight.rotation.y = Math.PI / 6;
+                aircraftGroup.add(wingRight);
+
+                // 4. المحركات النفاثة تحت الأجنحة (Engines)
+                const engineLeft = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.4, 3, 12), blueMat);
+                engineLeft.rotation.z = Math.PI / 2;
+                engineLeft.position.set(1, -0.9, 4);
+                aircraftGroup.add(engineLeft);
+
+                const engineRight = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.4, 3, 12), blueMat);
+                engineRight.rotation.z = Math.PI / 2;
+                engineRight.position.set(1, -0.9, -4);
+                aircraftGroup.add(engineRight);
+
+                // 5. مجموعة الذيل (Tail Assembly)
+                // الموازن العمودي الخلفي (Vertical Stabilizer)
+                const tailFin = new THREE.Mesh(new THREE.BoxGeometry(3, 4, 0.3), blueMat);
+                tailFin.position.set(-8, 2.2, 0);
+                tailFin.rotation.z = Math.PI / 6;
+                aircraftGroup.add(tailFin);
+
+                // الموازن الأفقي الخلفي (Horizontal Stabilizers)
+                const tailWingLeft = new THREE.Mesh(new THREE.BoxGeometry(2, 0.15, 4), whiteMat);
+                tailWingLeft.position.set(-8.5, 0, 2);
+                tailWingLeft.rotation.y = -Math.PI / 6;
+                aircraftGroup.add(tailWingLeft);
+
+                const tailWingRight = new THREE.Mesh(new THREE.BoxGeometry(2, 0.15, 4), whiteMat);
+                tailWingRight.position.set(-8.5, 0, -2);
+                tailWingRight.rotation.y = Math.PI / 6;
+                aircraftGroup.add(tailWingRight);
+
+                // تصغير حجم الكائن الإجمالي ليتناسب مع أبعاد اللعبة
+                aircraftGroup.scale.set(0.35, 0.35, 0.35);
+                return aircraftGroup;
+            }
+
+            const aircraft = buildDetailedAircraft();
             aircraft.position.set(0, 2, 0);
             scene.add(aircraft);
 
-            // الطائرة البرمجية الجاهزة فوراً
-            const bodyMat = new THREE.MeshStandardMaterial({ color: 0xffffff });
-            const wingMat = new THREE.MeshStandardMaterial({ color: 0xff3333 });
-            const body = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.2, 18, 16), bodyMat);
-            body.rotation.z = Math.PI / 2;
-            aircraft.add(body);
-            const wing = new THREE.Mesh(new THREE.BoxGeometry(22, 0.3, 4), wingMat);
-            aircraft.add(wing);
-            const tail = new THREE.Mesh(new THREE.BoxGeometry(6, 0.3, 2), wingMat);
-            tail.position.set(-8, 0, 0);
-            aircraft.add(tail);
-
-            // محاولة جلب مجسم 3D الاحترافي في الخلفية دون تعطيل اللعبة
-            if (typeof THREE.GLTFLoader !== 'undefined') {
-                const loader = new THREE.GLTFLoader();
-                const airplaneURL = 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/Airplane/glTF-Binary/Airplane.glb';
-                loader.load(airplaneURL, function (gltf) {
-                    // إذا نجح التحميل، نقوم بإزالة الطائرة البدائية واستبدالها
-                    while(aircraft.children.length > 0){ aircraft.remove(aircraft.children[0]); }
-                    const model = gltf.scene;
-                    model.scale.set(0.18, 0.18, 0.18);
-                    model.rotation.y = Math.PI;
-                    aircraft.add(model);
-                }, undefined, function(e) { console.log("الإنترنت مقيد، جاري الاستمرار بالطائرة المدمجة المضمونة."); });
-            }
-
             // =====================================
-            // فيزياء الحركة والتحكم
+            // نظام حركة الطيران والتحكم
             // =====================================
             let speed = 0, fuel = 100, altitude = 2, pitch = 0, verticalSpeed = 0;
             let flightPhase = "تدريج (TAXI)";
@@ -141,10 +182,8 @@
             const hud = document.createElement("div"); hud.id = "hudPanel"; document.body.appendChild(hud);
             const phaseDiv = document.createElement("div"); phaseDiv.id = "phaseDisplay"; document.body.appendChild(phaseDiv);
 
-            // ربط أزرار الشاشة باللمس للهواتف
             function bindBtn(id, action, stopAction) {
-                const btn = document.getElementById(id);
-                if (!btn) return;
+                const btn = document.getElementById(id); if (!btn) return;
                 btn.addEventListener("touchstart", (e) => { e.preventDefault(); action(); });
                 btn.addEventListener("touchend", () => { if(stopAction) stopAction(); });
                 btn.addEventListener("mousedown", () => { action(); });
@@ -158,24 +197,21 @@
             bindBtn("pitchUpBtn", () => { keys["w"] = true; }, () => { keys["w"] = false; });
             bindBtn("pitchDownBtn", () => { keys["s"] = true; }, () => { keys["s"] = false; });
 
-            // حلقة اللعب والتحديث المستمر
-            function animate() {
-                requestAnimationFrame(animate);
-
-                // حركة الطائرة بناءً على الأزرار المضغوطة
-                if (keys["up"] && fuel > 0) speed += 0.004;
-                if (keys["down"]) speed -= 0.004;
+            function updateFlight() {
+                if (keys["up"] && fuel > 0) speed += 0.005;
+                if (keys["down"]) speed -= 0.005;
                 speed = Math.max(0, Math.min(0.8, speed)) * 0.995;
 
-                if (keys["left"]) aircraft.rotation.y += 0.02;
-                if (keys["right"]) aircraft.rotation.y -= 0.02;
-                if (keys["w"]) pitch += 0.008;
-                if (keys["s"]) pitch -= 0.008;
+                if (keys["left"]) aircraft.rotation.y += 0.025;
+                if (keys["right"]) aircraft.rotation.y -= 0.025;
+                if (keys["w"]) pitch += 0.01;
+                if (keys["s"]) pitch -= 0.01;
                 pitch = Math.max(-0.4, Math.min(0.4, pitch));
+                
+                // تدوير الطائرة بصرياً لتعطي محاكاة حقيقية عند الارتفاع والانخفاض
                 aircraft.rotation.z = -pitch;
 
-                // نظام الرفع والارتفاع
-                let lift = (speed > 0.2) ? (speed - 0.2) * 0.02 * (1 + pitch) : 0;
+                let lift = (speed > 0.22) ? (speed - 0.22) * 0.025 * (1 + pitch) : 0;
                 verticalSpeed += lift - 0.003;
                 altitude += verticalSpeed;
 
@@ -184,17 +220,22 @@
 
                 flightPhase = altitude < 4 ? "تدريج (TAXI)" : "طيران مستقر (CRUISE)";
 
-                // دفع الطائرة للأمام
                 const direction = new THREE.Vector3(0, 0, -1).applyQuaternion(aircraft.quaternion);
-                aircraft.position.addScaledVector(direction, speed * 10);
+                aircraft.position.addScaledVector(direction, speed * 12);
                 fuel = Math.max(0, fuel - (speed * 0.005));
+            }
 
-                // الكاميرا تتبع الطائرة من الخلف بنعومة
-                const offset = new THREE.Vector3(0, 8, 45).applyQuaternion(aircraft.quaternion);
+            // حلقة اللعب
+            function animate() {
+                requestAnimationFrame(animate);
+                updateFlight();
+
+                // الكاميرا تتبع الطائرة من مسافة مناسبة لرؤية المجسم بالكامل
+                const offset = new THREE.Vector3(0, 10, 50).applyQuaternion(aircraft.quaternion);
                 camera.position.copy(aircraft.position).add(offset);
                 camera.lookAt(aircraft.position);
 
-                // تحديث الشاشات
+                // تحديث العدادات
                 hud.innerHTML = `<b>السرعة:</b> ${Math.round(speed * 1200)} عقدة<br><b>الارتفاع:</b> ${Math.round(altitude * 10)} قدم<br><b>الوقود:</b> ${Math.round(fuel)} %`;
                 phaseDiv.innerText = `الوضعية: ${flightPhase}`;
 
@@ -210,7 +251,7 @@
             animate();
 
         } catch (error) {
-            console.error("حدث خطأ في تشغيل المحرك:", error);
+            console.error("حدث خطأ:", error);
         }
     });
 </script>
