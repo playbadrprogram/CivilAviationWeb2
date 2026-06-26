@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>محاكي الطيران الاحترافي - نظام الهبوط المطور</title>
+    <title>محاكي الطيران الاحترافي - إصلاح وميض الأرض</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #1a2a3a; font-family: sans-serif; }
         #mobilePanel { position: fixed; bottom: 20px; left: 20px; z-index: 1000; direction: ltr; display: flex; flex-wrap: wrap; width: 220px; }
@@ -73,14 +73,17 @@
             document.body.addEventListener('click', activateAudioContext);
 
             // =====================================
-            // البيئة والمشهد العملاق
+            // البيئة والمشهد العملاق (تم تحسين الكاميرا)
             // =====================================
             const scene = new THREE.Scene();
             scene.background = new THREE.Color(0x7ec0ee); 
             scene.fog = new THREE.FogExp2(0x7ec0ee, 0.0001);
 
-            const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 120000);
-            const renderer = new THREE.WebGLRenderer({ antialias: true });
+            // ضبط مدى البداية والنهاية للكاميرا لمنع الوميض (Z-buffer Precision)
+            const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.5, 90000);
+            
+            // تفعيل ميزة logarithmicDepthBuffer لمنع اختفاء الأسطح البعيدة كلياً
+            const renderer = new THREE.WebGLRenderer({ antialias: true, logarithmicDepthBuffer: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
             document.body.appendChild(renderer.domElement);
 
@@ -89,28 +92,29 @@
             sun.position.set(1000, 2000, 800);
             scene.add(sun);
 
-            // الأرضية اللانهائية
+            // الأرضية اللانهائية المستقرة (Y = 0)
             const ground = new THREE.Mesh(
                 new THREE.PlaneGeometry(150000, 150000),
                 new THREE.MeshStandardMaterial({ color: 0x448a5f, roughness: 0.9 })
             );
             ground.rotation.x = -Math.PI / 2;
+            ground.position.y = 0;
             scene.add(ground);
 
             // =====================================
-            // ممر الهبوط والإقلاع
+            // ممر الهبوط (تم رفعه بمسافة آمنة Y = 0.5 لمنع الوميض)
             // =====================================
             const runwayGroup = new THREE.Group();
             const asphalt = new THREE.Mesh(
-                new THREE.BoxGeometry(200, 0.2, 12000), // ممر أطول لرؤيته من بعيد
+                new THREE.BoxGeometry(200, 0.5, 12000), 
                 new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.85 })
             );
-            asphalt.position.set(0, 0.1, 0);
+            asphalt.position.set(0, 0.25, 0); // رفع ممر الأسفلت
             runwayGroup.add(asphalt);
 
             for (let z = -5500; z <= 5500; z += 180) {
-                const line = new THREE.Mesh(new THREE.BoxGeometry(6, 0.25, 80), new THREE.MeshStandardMaterial({ color: 0xffffff }));
-                line.position.set(0, 0.2, z);
+                const line = new THREE.Mesh(new THREE.BoxGeometry(6, 0.1, 80), new THREE.MeshStandardMaterial({ color: 0xffffff }));
+                line.position.set(0, 0.51, z); // الخطوط البيضاء فوق الأسفلت تماماً
                 runwayGroup.add(line);
             }
             scene.add(runwayGroup);
@@ -182,13 +186,13 @@
             }
 
             const aircraft = buildAdvancedAircraft();
-            aircraft.position.set(0, 2.2, 5000); 
+            aircraft.position.set(0, 2.5, 5000); // رفع نقطة البداية لتتناسب مع سمك المدرج الجديد
             scene.add(aircraft);
 
             // =====================================
             // نظام الحركة والتحكم بالهبوط المطور
             // =====================================
-            let speed = 0, fuel = 100, altitude = 2.2, pitch = 0;
+            let speed = 0, fuel = 100, altitude = 2.5, pitch = 0;
             let flightPhase = "تدريج (TAXI)";
             let isCrashed = false;
             const keys = {};
@@ -211,7 +215,6 @@
             function updateFlight() {
                 if (isCrashed) return;
 
-                // نظام السرعة والوقود
                 if (keys["up"] && fuel > 0) speed += 0.008;
                 if (keys["down"]) speed -= 0.008;
                 speed = Math.max(0, Math.min(1.0, speed)) * 0.995;
@@ -221,47 +224,39 @@
                     mainOsc.frequency.setTargetAtTime(60 + (speed * 140), audioCtx.currentTime, 0.1);
                 }
 
-                // الالتفاف الكامل بزاوية 360 درجة للعودة للمطار
                 if (keys["left"]) aircraft.rotation.y += 0.025;
                 if (keys["right"]) aircraft.rotation.y -= 0.025;
                 
-                // التحكم القسري في أنف الطائرة (pitch) للإقلاع أو الهبوط الإجباري
                 if (keys["w"]) {
-                    pitch += 0.015; // رفع الأنف للأعلى
+                    pitch += 0.015; 
                 } else if (keys["s"]) {
-                    pitch -= 0.015; // خفض الأنف للأسفل فوراً للنزول
+                    pitch -= 0.015; 
                 } else {
-                    pitch *= 0.96; // استقرار تلقائي تدريجي عند ترك الأزرار لئلا تستمر بالارتفاع التلقائي
+                    pitch *= 0.96; 
                 }
                 pitch = Math.max(-0.4, Math.min(0.4, pitch));
                 aircraft.rotation.x = pitch;
 
-                // معادلة الارتفاع الفيزيائية المعتمدة على السرعة وزاوية الأنف
-                // إذا كان الأنف متجهاً للأسفل (pitch < 0)، ستنزل الطائرة حتى لو كانت سريعة
                 let lift = (speed > 0.2) ? pitch * speed * 4.5 : 0; 
                 
-                // إضافة الجاذبية الطبيعية
-                if (altitude > 2.2) {
-                    altitude += lift - 0.1; // الجاذبية تسحب الطائرة لأسفل باستمرار عند غياب الرفع
+                if (altitude > 2.5) {
+                    altitude += lift - 0.1; 
                 } else {
                     altitude += lift;
                 }
 
-                // نظام أمان الهبوط على المدرج والاستقرار
-                if (altitude < 2.2) { 
-                    altitude = 2.2; 
-                    if (pitch < 0) pitch = 0; // استواء الطائرة تماماً عند ملامسة الأرض
+                if (altitude < 2.5) { 
+                    altitude = 2.5; 
+                    if (pitch < 0) pitch = 0; 
                 }
                 aircraft.position.y = altitude;
 
                 flightPhase = altitude < 3.8 ? "تدريج (TAXI)" : "طيران مستقر (CRUISE)";
 
-                // دفع الطائرة للأمام باتجاه أنفها الحالي
                 const direction = new THREE.Vector3(0, 0, -1).applyQuaternion(aircraft.quaternion);
                 aircraft.position.addScaledVector(direction, speed * 22);
                 fuel = Math.max(0, fuel - (speed * 0.002));
 
-                // فحص الاصطدام بالمباني
                 const aircraftBox = new THREE.Box3().setFromObject(aircraft);
                 for (let i = 0; i < collidableObjects.length; i++) {
                     const bBox = new THREE.Box3().setFromObject(collidableObjects[i]);
@@ -282,7 +277,7 @@
                 camera.position.copy(aircraft.position).add(offset);
                 camera.lookAt(aircraft.position.clone().add(new THREE.Vector3(0, 1.2, -6).applyQuaternion(aircraft.quaternion)));
 
-                hud.innerHTML = `<b>السرعة:</b> ${Math.round(speed * 1200)} عقدة<br><b>الارتفاع:</b> ${Math.round((altitude - 2.2) * 20)} قدم<br><b>الوقود:</b> ${Math.round(fuel)} %`;
+                hud.innerHTML = `<b>السرعة:</b> ${Math.round(speed * 1200)} عقدة<br><b>الارتفاع:</b> ${Math.round((altitude - 2.5) * 20)} قدم<br><b>الوقود:</b> ${Math.round(fuel)} %`;
                 phaseDiv.innerText = `الوضعية: ${flightPhase}`;
 
                 renderer.render(scene, camera);
