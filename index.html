@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>محاكي الطيران الاحترافي - النسخة العملاقة</title>
+    <title>محاكي الطيران الاحترافي - نظام الهبوط المطور</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #1a2a3a; font-family: sans-serif; }
         #mobilePanel { position: fixed; bottom: 20px; left: 20px; z-index: 1000; direction: ltr; display: flex; flex-wrap: wrap; width: 220px; }
@@ -35,7 +35,7 @@
     window.addEventListener('DOMContentLoaded', () => {
         try {
             // =====================================
-            // نظام الصوت النفاث الاصطناعي (Web Audio API)
+            // نظام الصوت النفاث الاصطناعي
             // =====================================
             let audioCtx = null;
             let mainOsc = null;
@@ -45,18 +45,16 @@
                 if (audioCtx) return;
                 audioCtx = new (window.AudioContext || window.webkitAudioContext)();
                 
-                // إنشاء متذبذب لصوت المحرك
                 mainOsc = audioCtx.createOscillator();
                 mainOsc.type = 'sawtooth'; 
-                mainOsc.frequency.setValueAtTime(60, audioCtx.currentTime); // تردد منخفض للمحرك
+                mainOsc.frequency.setValueAtTime(60, audioCtx.currentTime);
 
-                // فلتر لتنعيم الصوت وجعله يبدو كنفاثة
                 const filter = audioCtx.createBiquadFilter();
                 filter.type = 'lowpass';
                 filter.frequency.setValueAtTime(300, audioCtx.currentTime);
 
                 mainGain = audioCtx.createGain();
-                mainGain.gain.setValueAtTime(0.0, audioCtx.currentTime); // يبدأ صامتاً
+                mainGain.gain.setValueAtTime(0.0, audioCtx.currentTime);
 
                 mainOsc.connect(filter);
                 filter.connect(mainGain);
@@ -65,7 +63,6 @@
                 mainOsc.start();
             }
 
-            // تشغيل الصوت عند أول لمسة للأزرار
             function activateAudioContext() {
                 initAudio();
                 if (audioCtx && audioCtx.state === 'suspended') {
@@ -76,66 +73,62 @@
             document.body.addEventListener('click', activateAudioContext);
 
             // =====================================
-            // إعداد المشهد والبيئة العملاقة
+            // البيئة والمشهد العملاق
             // =====================================
             const scene = new THREE.Scene();
             scene.background = new THREE.Color(0x7ec0ee); 
-            scene.fog = new THREE.FogExp2(0x7ec0ee, 0.00015); // ضباب لإعطاء عمق للمدينة الكبيرة
+            scene.fog = new THREE.FogExp2(0x7ec0ee, 0.0001);
 
-            const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 80000);
+            const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 120000);
             const renderer = new THREE.WebGLRenderer({ antialias: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
             document.body.appendChild(renderer.domElement);
 
-            const ambient = new THREE.AmbientLight(0xffffff, 0.85);
-            scene.add(ambient);
-
+            scene.add(new THREE.AmbientLight(0xffffff, 0.85));
             const sun = new THREE.DirectionalLight(0xffffff, 1.3);
             sun.position.set(1000, 2000, 800);
             scene.add(sun);
 
-            // تكبير الأرضية العشبية بشكل ضخم جداً (100,000 وحدة)
+            // الأرضية اللانهائية
             const ground = new THREE.Mesh(
-                new THREE.PlaneGeometry(100000, 100000),
+                new THREE.PlaneGeometry(150000, 150000),
                 new THREE.MeshStandardMaterial({ color: 0x448a5f, roughness: 0.9 })
             );
             ground.rotation.x = -Math.PI / 2;
             scene.add(ground);
 
             // =====================================
-            // ممر الهبوط والإقلاع الأسفلتي
+            // ممر الهبوط والإقلاع
             // =====================================
             const runwayGroup = new THREE.Group();
             const asphalt = new THREE.Mesh(
-                new THREE.BoxGeometry(180, 0.2, 9000),
+                new THREE.BoxGeometry(200, 0.2, 12000), // ممر أطول لرؤيته من بعيد
                 new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.85 })
             );
             asphalt.position.set(0, 0.1, 0);
             runwayGroup.add(asphalt);
 
-            for (let z = -4300; z <= 4300; z += 180) {
-                const line = new THREE.Mesh(new THREE.BoxGeometry(5, 0.25, 70), new THREE.MeshStandardMaterial({ color: 0xffffff }));
+            for (let z = -5500; z <= 5500; z += 180) {
+                const line = new THREE.Mesh(new THREE.BoxGeometry(6, 0.25, 80), new THREE.MeshStandardMaterial({ color: 0xffffff }));
                 line.position.set(0, 0.2, z);
                 runwayGroup.add(line);
             }
             scene.add(runwayGroup);
 
             // =====================================
-            // توليد مدينة ضخمة جداً (600 مبنى عملاق)
+            // توليد مباني المدينة
             // =====================================
             const collidableObjects = [];
-
             function createRealisticBuilding(x, z) {
-                const w = 60 + Math.random() * 50;
-                const h = 200 + Math.random() * 500; // ناطحات سحاب شاهقة جداً
-                const d = 60 + Math.random() * 50;
+                const w = 60 + Math.random() * 60;
+                const h = 200 + Math.random() * 600;
+                const d = 60 + Math.random() * 60;
 
                 const bMesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshStandardMaterial({ color: 0x2c3e50, roughness: 0.4 }));
                 bMesh.position.set(x, h / 2, z);
                 scene.add(bMesh);
                 collidableObjects.push(bMesh);
 
-                // أضواء النوافذ المضيئة
                 const winGeo = new THREE.BoxGeometry(w + 1, 2.5, d + 1);
                 const winMat = new THREE.MeshStandardMaterial({ color: 0xfff7e6, emissive: 0xffcc00, emissiveIntensity: 0.6 });
                 for (let y = 40; y < h - 30; y += 40) {
@@ -145,20 +138,12 @@
                 }
             }
 
-            // نشر 600 مبنى في مساحة هائلة جداً حول المطار
-            for (let i = 0; i < 600; i++) {
-                let bx = (Math.random() - 0.5) * 45000;
-                let bz = (Math.random() - 0.5) * 45000;
-                if (Math.abs(bx) > 400 || Math.abs(bz) > 5000) {
+            for (let i = 0; i < 700; i++) {
+                let bx = (Math.random() - 0.5) * 60000;
+                let bz = (Math.random() - 0.5) * 60000;
+                if (Math.abs(bx) > 500 || Math.abs(bz) > 6500) {
                     createRealisticBuilding(bx, bz);
                 }
-            }
-
-            // غيوم كثيفة في الأفق للواقعية
-            for (let i = 0; i < 120; i++) {
-                const cloud = new THREE.Mesh(new THREE.SphereGeometry(80, 8, 8), new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1.0 }));
-                cloud.position.set((Math.random() - 0.5) * 50000, 800 + Math.random() * 600, (Math.random() - 0.5) * 50000);
-                scene.add(cloud);
             }
 
             // =====================================
@@ -197,13 +182,13 @@
             }
 
             const aircraft = buildAdvancedAircraft();
-            aircraft.position.set(0, 2.2, 3500); 
+            aircraft.position.set(0, 2.2, 5000); 
             scene.add(aircraft);
 
             // =====================================
-            // نظام الحركة والفيزياء
+            // نظام الحركة والتحكم بالهبوط المطور
             // =====================================
-            let speed = 0, fuel = 100, altitude = 2.2, pitch = 0, verticalSpeed = 0;
+            let speed = 0, fuel = 100, altitude = 2.2, pitch = 0;
             let flightPhase = "تدريج (TAXI)";
             let isCrashed = false;
             const keys = {};
@@ -226,42 +211,57 @@
             function updateFlight() {
                 if (isCrashed) return;
 
-                if (keys["up"] && fuel > 0) speed += 0.007;
-                if (keys["down"]) speed -= 0.007;
-                speed = Math.max(0, Math.min(0.95, speed)) * 0.996;
+                // نظام السرعة والوقود
+                if (keys["up"] && fuel > 0) speed += 0.008;
+                if (keys["down"]) speed -= 0.008;
+                speed = Math.max(0, Math.min(1.0, speed)) * 0.995;
 
-                // تحديث تأثير الصوت الاصطناعي برمجياً بناءً على السرعة
                 if (mainGain && mainOsc) {
                     mainGain.gain.setTargetAtTime(speed * 0.25, audioCtx.currentTime, 0.1);
                     mainOsc.frequency.setTargetAtTime(60 + (speed * 140), audioCtx.currentTime, 0.1);
                 }
 
-                if (keys["left"]) aircraft.rotation.y += 0.022;
-                if (keys["right"]) aircraft.rotation.y -= 0.022;
+                // الالتفاف الكامل بزاوية 360 درجة للعودة للمطار
+                if (keys["left"]) aircraft.rotation.y += 0.025;
+                if (keys["right"]) aircraft.rotation.y -= 0.025;
                 
-                if (keys["w"]) pitch += 0.008; 
-                if (keys["s"]) pitch -= 0.008; 
-                pitch = Math.max(-0.3, Math.min(0.3, pitch));
+                // التحكم القسري في أنف الطائرة (pitch) للإقلاع أو الهبوط الإجباري
+                if (keys["w"]) {
+                    pitch += 0.015; // رفع الأنف للأعلى
+                } else if (keys["s"]) {
+                    pitch -= 0.015; // خفض الأنف للأسفل فوراً للنزول
+                } else {
+                    pitch *= 0.96; // استقرار تلقائي تدريجي عند ترك الأزرار لئلا تستمر بالارتفاع التلقائي
+                }
+                pitch = Math.max(-0.4, Math.min(0.4, pitch));
                 aircraft.rotation.x = pitch;
 
-                let lift = (speed > 0.25) ? (speed - 0.25) * 0.032 * (1 - pitch) : 0;
-                verticalSpeed += lift - 0.0042;
-                altitude += verticalSpeed;
+                // معادلة الارتفاع الفيزيائية المعتمدة على السرعة وزاوية الأنف
+                // إذا كان الأنف متجهاً للأسفل (pitch < 0)، ستنزل الطائرة حتى لو كانت سريعة
+                let lift = (speed > 0.2) ? pitch * speed * 4.5 : 0; 
+                
+                // إضافة الجاذبية الطبيعية
+                if (altitude > 2.2) {
+                    altitude += lift - 0.1; // الجاذبية تسحب الطائرة لأسفل باستمرار عند غياب الرفع
+                } else {
+                    altitude += lift;
+                }
 
+                // نظام أمان الهبوط على المدرج والاستقرار
                 if (altitude < 2.2) { 
                     altitude = 2.2; 
-                    verticalSpeed = 0; 
-                    pitch = pitch * 0.75; 
+                    if (pitch < 0) pitch = 0; // استواء الطائرة تماماً عند ملامسة الأرض
                 }
                 aircraft.position.y = altitude;
 
                 flightPhase = altitude < 3.8 ? "تدريج (TAXI)" : "طيران مستقر (CRUISE)";
 
+                // دفع الطائرة للأمام باتجاه أنفها الحالي
                 const direction = new THREE.Vector3(0, 0, -1).applyQuaternion(aircraft.quaternion);
-                aircraft.position.addScaledVector(direction, speed * 18);
+                aircraft.position.addScaledVector(direction, speed * 22);
                 fuel = Math.max(0, fuel - (speed * 0.002));
 
-                // فحص نظام الاصطدامات بالمباني
+                // فحص الاصطدام بالمباني
                 const aircraftBox = new THREE.Box3().setFromObject(aircraft);
                 for (let i = 0; i < collidableObjects.length; i++) {
                     const bBox = new THREE.Box3().setFromObject(collidableObjects[i]);
