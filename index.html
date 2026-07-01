@@ -1,1 +1,361 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Airbus A380 Flight Simulator</title>
+<style>
+  body { margin:0; overflow:hidden; background:#1a2a3a; font-family:sans-serif; }
+  #hudLeft, #hudRight, #compass {
+    position:fixed; z-index:2000; color:#fff; background:rgba(0,0,0,.55);
+    padding:10px 12px; border-radius:10px; line-height:1.6; font-size:14px;
+    border:1px solid rgba(255,255,255,.15);
+  }
+  #hudLeft { top:10px; left:10px; text-align:left; }
+  #hudRight { top:10px; right:10px; text-align:right; direction:rtl; }
+  #compass { top:120px; left:10px; min-width:180px; }
+  #compassBar {
+    height:10px; border-radius:999px; background:linear-gradient(90deg,#00ffcc,#ffffff,#00ffcc);
+    position:relative; overflow:hidden; margin-top:8px;
+  }
+  #compassNeedle {
+    position:absolute; top:-4px; width:2px; height:18px; background:#ff3b3b;
+    left:50%; transform:translateX(-50%);
+    box-shadow:0 0 8px #ff3b3b;
+  }
+  #mobilePanel { position:fixed; bottom:20px; left:20px; z-index:3000; display:flex; flex-wrap:wrap; width:230px; direction:ltr; }
+  #mobilePanel button {
+    width:70px; height:56px; margin:4px; border-radius:12px; border:2px solid #333;
+    background:rgba(255,255,255,.9); font-weight:bold; cursor:pointer; user-select:none;
+  }
+  #mobilePanel button:active { background:#00ffcc; }
+  #phaseDisplay {
+    position:fixed; top:10px; left:50%; transform:translateX(-50%);
+    z-index:2500; color:#00ffcc; background:rgba(0,0,0,.7); padding:8px 16px;
+    border-radius:8px; font-weight:bold; text-shadow:0 0 8px #00ffcc;
+  }
+  #crashScreen {
+    display:none; position:fixed; inset:0; background:rgba(200,0,0,.9); z-index:5000;
+    justify-content:center; align-items:center; flex-direction:column; color:#fff;
+    font-size:30px; font-weight:bold; cursor:pointer;
+  }
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/examples/js/loaders/GLTFLoader.js"></script>
+</head>
+<body>
 
+<div id="crashScreen" onclick="location.reload()">
+  <div>💥 تحطمت الطائرة! 💥</div>
+  <div style="font-size:18px;margin-top:15px;">اضغط لإعادة المحاولة</div>
+</div>
+
+<div id="hudLeft"></div>
+<div id="hudRight"></div>
+<div id="compass">
+  <div>البوصلة</div>
+  <div id="compassBar"><div id="compassNeedle"></div></div>
+  <div id="compassText" style="margin-top:6px;">Heading: 0°</div>
+</div>
+<div id="phaseDisplay">الوضعية: INIT</div>
+
+<div id="mobilePanel">
+  <button id="upBtn">زيادة سرعة</button>
+  <button id="downBtn">فرملة</button>
+  <button id="leftBtn">يسار</button>
+  <button id="rightBtn">يمين</button>
+  <button id="pitchUpBtn">إقلاع ↑</button>
+  <button id="pitchDownBtn">هبوط ↓</button>
+</div>
+
+<script>
+window.addEventListener('DOMContentLoaded', () => {
+  try {
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x7ec0ee);
+    scene.fog = new THREE.FogExp2(0x7ec0ee, 0.00002);
+
+    const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 200000);
+    const renderer = new THREE.WebGLRenderer({ antialias: true, logarithmicDepthBuffer: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    document.body.appendChild(renderer.domElement);
+
+    scene.add(new THREE.AmbientLight(0xffffff, 0.9));
+    const sun = new THREE.DirectionalLight(0xffffff, 1.4);
+    sun.position.set(5000, 10000, 8000);
+    scene.add(sun);
+
+    const ground = new THREE.Mesh(
+      new THREE.PlaneGeometry(300000, 300000),
+      new THREE.MeshStandardMaterial({ color: 0x3f8b57, roughness: 1 })
+    );
+    ground.rotation.x = -Math.PI / 2;
+    ground.position.y = -1;
+    scene.add(ground);
+
+    const runwayGroup = new THREE.Group();
+    const runway = new THREE.Mesh(
+      new THREE.BoxGeometry(300, 1, 15000),
+      new THREE.MeshStandardMaterial({ color: 0x202020, roughness: 0.95 })
+    );
+    runway.position.y = 0;
+    runwayGroup.add(runway);
+
+    for (let z = -7200; z <= 7200; z += 220) {
+      const mark = new THREE.Mesh(
+        new THREE.BoxGeometry(10, 0.2, 100),
+        new THREE.MeshStandardMaterial({ color: 0xffffff })
+      );
+      mark.position.set(0, 0.7, z);
+      runwayGroup.add(mark);
+    }
+    scene.add(runwayGroup);
+
+    const collidables = [];
+
+    function createBuilding(x, z, scale=1) {
+      const w = (60 + Math.random()*80) * scale;
+      const h = (180 + Math.random()*700) * scale;
+      const d = (60 + Math.random()*80) * scale;
+      const mesh = new THREE.Mesh(
+        new THREE.BoxGeometry(w, h, d),
+        new THREE.MeshStandardMaterial({ color: 0x2c3e50, roughness: 0.45 })
+      );
+      mesh.position.set(x, h/2, z);
+      scene.add(mesh);
+      collidables.push(mesh);
+    }
+
+    for (let i=0; i<500; i++) {
+      const x = (Math.random()-0.5) * 80000;
+      const z = (Math.random()-0.5) * 80000;
+      if (Math.abs(x) > 1000 || Math.abs(z) > 8000) createBuilding(x, z);
+    }
+
+    let aircraft = new THREE.Group();
+    scene.add(aircraft);
+
+    function loadA380() {
+      const loader = new THREE.GLTFLoader();
+      loader.load(
+        'models/a380.glb',
+        (gltf) => {
+          scene.remove(aircraft);
+          aircraft = gltf.scene;
+          aircraft.scale.set(6, 6, 6);
+          aircraft.position.set(0, 8, 5200);
+          aircraft.rotation.y = Math.PI;
+          aircraft.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+          scene.add(aircraft);
+        },
+        undefined,
+        (err) => {
+          console.error(err);
+          aircraft = buildFallbackPlane();
+          aircraft.position.set(0, 8, 5200);
+          scene.add(aircraft);
+        }
+      );
+    }
+
+    function buildFallbackPlane() {
+      const g = new THREE.Group();
+      const white = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.35 });
+      const blue = new THREE.MeshStandardMaterial({ color: 0x0a3c7a, roughness: 0.45 });
+      const dark = new THREE.MeshStandardMaterial({ color: 0x111111 });
+
+      const body = new THREE.Mesh(new THREE.CylinderGeometry(2.2, 2.2, 34, 18), white);
+      body.rotation.z = Math.PI / 2;
+      g.add(body);
+
+      const nose = new THREE.Mesh(new THREE.ConeGeometry(2.2, 7, 18), white);
+      nose.rotation.z = Math.PI / 2;
+      nose.position.x = 20.5;
+      g.add(nose);
+
+      const tail = new THREE.Mesh(new THREE.ConeGeometry(1.6, 8, 16), white);
+      tail.rotation.z = -Math.PI / 2;
+      tail.position.x = -20.5;
+      g.add(tail);
+
+      const wingShape = new THREE.Shape();
+      wingShape.moveTo(0, 0);
+      wingShape.lineTo(16, -1);
+      wingShape.lineTo(28, -5);
+      wingShape.lineTo(14, -4);
+      wingShape.lineTo(0, -2);
+      const wingGeo = new THREE.ExtrudeGeometry(wingShape, { depth: 0.3, bevelEnabled: false });
+      const wingR = new THREE.Mesh(wingGeo, blue);
+      wingR.rotation.x = Math.PI / 2;
+      wingR.position.set(0, -1, 2);
+      g.add(wingR);
+
+      const wingL = new THREE.Mesh(wingGeo, blue);
+      wingL.rotation.x = Math.PI / 2;
+      wingL.rotation.y = Math.PI;
+      wingL.position.set(0, -1, -2);
+      g.add(wingL);
+
+      const cockpit = new THREE.Mesh(new THREE.SphereGeometry(1, 12, 12), dark);
+      cockpit.scale.set(1.5, 0.7, 1.2);
+      cockpit.position.set(16.5, 1.3, 0);
+      g.add(cockpit);
+
+      const fin = new THREE.Mesh(new THREE.BoxGeometry(0.8, 9, 5), blue);
+      fin.position.set(-16, 5.5, 0);
+      fin.rotation.x = -0.2;
+      g.add(fin);
+
+      g.scale.set(1.2, 1.2, 1.2);
+      return g;
+    }
+
+    loadA380();
+
+    let keys = {};
+    let speed = 0;
+    let altitude = 8;
+    let pitch = 0;
+    let roll = 0;
+    let yaw = 0;
+    let fuel = 100;
+    let crashed = false;
+    let lat = 51.4700;
+    let lon = -0.4543;
+    let destLat = 48.8566;
+    let destLon = 2.3522;
+    let phase = 'READY';
+    let velocity = new THREE.Vector3(0, 0, 0);
+
+    function bindBtn(id, key) {
+      const b = document.getElementById(id);
+      b.addEventListener('touchstart', e => { e.preventDefault(); keys[key] = true; });
+      b.addEventListener('touchend', () => keys[key] = false);
+      b.addEventListener('mousedown', () => keys[key] = true);
+      b.addEventListener('mouseup', () => keys[key] = false);
+      b.addEventListener('mouseleave', () => keys[key] = false);
+    }
+
+    ['upBtn','downBtn','leftBtn','rightBtn','pitchUpBtn','pitchDownBtn'].forEach(() => {});
+    bindBtn('upBtn','up');
+    bindBtn('downBtn','down');
+    bindBtn('leftBtn','left');
+    bindBtn('rightBtn','right');
+    bindBtn('pitchUpBtn','w');
+    bindBtn('pitchDownBtn','s');
+
+    const hudLeft = document.getElementById('hudLeft');
+    const hudRight = document.getElementById('hudRight');
+    const phaseDisplay = document.getElementById('phaseDisplay');
+    const compassText = document.getElementById('compassText');
+    const compassNeedle = document.getElementById('compassNeedle');
+
+    function updateFlight(dt) {
+      if (crashed || !aircraft) return;
+
+      if (keys.up && fuel > 0) speed += 0.05 * dt;
+      if (keys.down) speed -= 0.06 * dt;
+      speed = THREE.MathUtils.clamp(speed, 0, 1.6);
+
+      if (keys.left) yaw += 0.8 * dt;
+      if (keys.right) yaw -= 0.8 * dt;
+      if (keys.w) pitch += 0.5 * dt;
+      else if (keys.s) pitch -= 0.5 * dt;
+      else pitch *= 0.98;
+
+      pitch = THREE.MathUtils.clamp(pitch, -0.35, 0.35);
+      roll = THREE.MathUtils.lerp(roll, (keys.left ? 0.45 : 0) + (keys.right ? -0.45 : 0), 0.08);
+
+      aircraft.rotation.set(pitch, yaw, roll);
+
+      const thrust = speed * 24;
+      const lift = Math.max(0, speed - 0.2) * (0.35 + pitch * 1.7);
+      const drag = speed * speed * 0.12;
+      const gravity = 0.28;
+
+      altitude += (lift * 8 - gravity) * dt;
+      altitude = Math.max(0, altitude);
+      aircraft.position.y = altitude + 0.8;
+
+      const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(aircraft.quaternion).normalize();
+      aircraft.position.addScaledVector(forward, (thrust - drag) * dt * 18);
+
+      fuel = Math.max(0, fuel - speed * 0.01 * dt);
+
+      const headingDeg = ((THREE.MathUtils.radToDeg(yaw) % 360) + 360) % 360;
+      compassText.innerText = `Heading: ${Math.round(headingDeg)}°`;
+      compassNeedle.style.transform = `translateX(-50%) rotate(${headingDeg}deg)`;
+
+      lat += Math.sin(headingDeg * Math.PI / 180) * speed * dt * 0.0005;
+      lon += Math.cos(headingDeg * Math.PI / 180) * speed * dt * 0.0005;
+
+      if (aircraft.position.y < 1.4 && speed > 0.35) {
+        crashed = true;
+        document.getElementById('crashScreen').style.display = 'flex';
+      }
+
+      const aBox = new THREE.Box3().setFromObject(aircraft);
+      for (const obj of collidables) {
+        const bBox = new THREE.Box3().setFromObject(obj);
+        if (aBox.intersectsBox(bBox)) {
+          crashed = true;
+          document.getElementById('crashScreen').style.display = 'flex';
+          break;
+        }
+      }
+
+      const distanceToParis = getDistanceKm(lat, lon, destLat, destLon);
+      phase = altitude < 20 ? 'TAKEOFF/LANDING' : 'CRUISE';
+
+      hudLeft.innerHTML = `
+        <b>Speed:</b> ${Math.round(speed * 140)} kt<br>
+        <b>Altitude:</b> ${Math.round(altitude * 100)} ft<br>
+        <b>Fuel:</b> ${Math.round(fuel)}%<br>
+        <b>Phase:</b> ${phase}
+      `;
+      hudRight.innerHTML = `
+        <b>Lat:</b> ${lat.toFixed(4)}<br>
+        <b>Lon:</b> ${lon.toFixed(4)}<br>
+        <b>Destination:</b> Paris<br>
+        <b>Distance:</b> ${distanceToParis.toFixed(0)} km
+      `;
+      phaseDisplay.innerText = `الوضعية: ${phase}`;
+    }
+
+    function getDistanceKm(lat1, lon1, lat2, lon2) {
+      const R = 6371;
+      const dLat = (lat2 - lat1) * Math.PI / 180;
+      const dLon = (lon2 - lon1) * Math.PI / 180;
+      const a = Math.sin(dLat/2) ** 2 + Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) * Math.sin(dLon/2) ** 2;
+      return 2 * R * Math.asin(Math.sqrt(a));
+    }
+
+    let last = performance.now();
+    function animate(now) {
+      requestAnimationFrame(animate);
+      const dt = Math.min(0.033, (now - last) / 1000);
+      last = now;
+
+      updateFlight(dt);
+
+      if (aircraft) {
+        const camOffset = new THREE.Vector3(0, 24, 95).applyQuaternion(aircraft.quaternion);
+        camera.position.copy(aircraft.position).add(camOffset);
+        camera.lookAt(aircraft.position.clone().add(new THREE.Vector3(0, 10, -40).applyQuaternion(aircraft.quaternion)));
+      }
+
+      renderer.render(scene, camera);
+    }
+    requestAnimationFrame(animate);
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+  } catch (e) { console.error(e); }
+});
+</script>
+</body>
+</html>
