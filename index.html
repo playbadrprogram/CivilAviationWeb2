@@ -10,10 +10,11 @@
     position:fixed; z-index:2000; color:#fff; background:rgba(0,0,0,.55);
     padding:10px 12px; border-radius:10px; line-height:1.6; font-size:14px;
     border:1px solid rgba(255,255,255,.15);
+    backdrop-filter: blur(4px);
   }
-  #hudLeft { top:10px; left:10px; text-align:left; }
-  #hudRight { top:10px; right:10px; text-align:right; direction:rtl; }
-  #compass { top:120px; left:10px; min-width:180px; }
+  #hudLeft { top:10px; left:10px; text-align:left; min-width:180px; }
+  #hudRight { top:10px; right:10px; text-align:right; direction:rtl; min-width:190px; }
+  #compass { top:120px; left:10px; min-width:190px; }
   #compassBar {
     height:10px; border-radius:999px; background:linear-gradient(90deg,#00ffcc,#ffffff,#00ffcc);
     position:relative; overflow:hidden; margin-top:8px;
@@ -26,12 +27,12 @@
   #mobilePanel { position:fixed; bottom:20px; left:20px; z-index:3000; display:flex; flex-wrap:wrap; width:230px; direction:ltr; }
   #mobilePanel button {
     width:70px; height:56px; margin:4px; border-radius:12px; border:2px solid #333;
-    background:rgba(255,255,255,.9); font-weight:bold; cursor:pointer; user-select:none;
+    background:rgba(255,255,255,.92); font-weight:bold; cursor:pointer; user-select:none;
   }
   #mobilePanel button:active { background:#00ffcc; }
   #phaseDisplay {
     position:fixed; top:10px; left:50%; transform:translateX(-50%);
-    z-index:2500; color:#00ffcc; background:rgba(0,0,0,.7); padding:8px 16px;
+    z-index:2500; color:#00ffcc; background:rgba(0,0,0,.72); padding:8px 16px;
     border-radius:8px; font-weight:bold; text-shadow:0 0 8px #00ffcc;
   }
   #crashScreen {
@@ -52,11 +53,13 @@
 
 <div id="hudLeft"></div>
 <div id="hudRight"></div>
+
 <div id="compass">
   <div>البوصلة</div>
   <div id="compassBar"><div id="compassNeedle"></div></div>
   <div id="compassText" style="margin-top:6px;">Heading: 0°</div>
 </div>
+
 <div id="phaseDisplay">الوضعية: INIT</div>
 
 <div id="mobilePanel">
@@ -81,7 +84,7 @@ window.addEventListener('DOMContentLoaded', () => {
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     document.body.appendChild(renderer.domElement);
 
-    scene.add(new THREE.AmbientLight(0xffffff, 0.9));
+    scene.add(new THREE.AmbientLight(0xffffff, 0.95));
     const sun = new THREE.DirectionalLight(0xffffff, 1.4);
     sun.position.set(5000, 10000, 8000);
     scene.add(sun);
@@ -114,47 +117,70 @@ window.addEventListener('DOMContentLoaded', () => {
 
     const collidables = [];
 
-    function createBuilding(x, z, scale=1) {
-      const w = (60 + Math.random()*80) * scale;
-      const h = (180 + Math.random()*700) * scale;
-      const d = (60 + Math.random()*80) * scale;
+    function createBuilding(x, z, scale = 1) {
+      const w = (60 + Math.random() * 80) * scale;
+      const h = (180 + Math.random() * 700) * scale;
+      const d = (60 + Math.random() * 80) * scale;
       const mesh = new THREE.Mesh(
         new THREE.BoxGeometry(w, h, d),
         new THREE.MeshStandardMaterial({ color: 0x2c3e50, roughness: 0.45 })
       );
-      mesh.position.set(x, h/2, z);
+      mesh.position.set(x, h / 2, z);
       scene.add(mesh);
       collidables.push(mesh);
     }
 
-    for (let i=0; i<500; i++) {
-      const x = (Math.random()-0.5) * 80000;
-      const z = (Math.random()-0.5) * 80000;
+    for (let i = 0; i < 500; i++) {
+      const x = (Math.random() - 0.5) * 80000;
+      const z = (Math.random() - 0.5) * 80000;
       if (Math.abs(x) > 1000 || Math.abs(z) > 8000) createBuilding(x, z);
     }
 
-    let aircraft = new THREE.Group();
-    scene.add(aircraft);
+    let aircraft = null;
+    let aircraftReady = false;
 
     function loadA380() {
       const loader = new THREE.GLTFLoader();
       loader.load(
-        'airbus-a380.glb',
+        './airbus-a380.glb',
         (gltf) => {
-          scene.remove(aircraft);
           aircraft = gltf.scene;
-          aircraft.scale.set(6, 6, 6);
-          aircraft.position.set(0, 8, 5200);
+
+          const box = new THREE.Box3().setFromObject(aircraft);
+          const size = box.getSize(new THREE.Vector3());
+          const center = box.getCenter(new THREE.Vector3());
+          const maxDim = Math.max(size.x, size.y, size.z);
+          const scale = 120 / maxDim;
+
+          aircraft.scale.setScalar(scale);
+
+          const box2 = new THREE.Box3().setFromObject(aircraft);
+          const center2 = box2.getCenter(new THREE.Vector3());
+          aircraft.position.sub(center2);
+          aircraft.position.set(0, 12, 5200);
+
           aircraft.rotation.y = Math.PI;
-          aircraft.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+          aircraft.traverse(o => {
+            if (o.isMesh) {
+              o.castShadow = true;
+              o.receiveShadow = true;
+            }
+          });
+
           scene.add(aircraft);
+          aircraftReady = true;
+
+          const camOffset = new THREE.Vector3(0, 28, 145).applyQuaternion(aircraft.quaternion);
+          camera.position.copy(aircraft.position).add(camOffset);
+          camera.lookAt(aircraft.position.clone().add(new THREE.Vector3(0, 12, -60).applyQuaternion(aircraft.quaternion)));
         },
         undefined,
         (err) => {
-          console.error(err);
+          console.error('A380 load failed:', err);
           aircraft = buildFallbackPlane();
           aircraft.position.set(0, 8, 5200);
           scene.add(aircraft);
+          aircraftReady = true;
         }
       );
     }
@@ -186,6 +212,7 @@ window.addEventListener('DOMContentLoaded', () => {
       wingShape.lineTo(14, -4);
       wingShape.lineTo(0, -2);
       const wingGeo = new THREE.ExtrudeGeometry(wingShape, { depth: 0.3, bevelEnabled: false });
+
       const wingR = new THREE.Mesh(wingGeo, blue);
       wingR.rotation.x = Math.PI / 2;
       wingR.position.set(0, -1, 2);
@@ -226,7 +253,6 @@ window.addEventListener('DOMContentLoaded', () => {
     let destLat = 48.8566;
     let destLon = 2.3522;
     let phase = 'READY';
-    let velocity = new THREE.Vector3(0, 0, 0);
 
     function bindBtn(id, key) {
       const b = document.getElementById(id);
@@ -237,13 +263,12 @@ window.addEventListener('DOMContentLoaded', () => {
       b.addEventListener('mouseleave', () => keys[key] = false);
     }
 
-    ['upBtn','downBtn','leftBtn','rightBtn','pitchUpBtn','pitchDownBtn'].forEach(() => {});
-    bindBtn('upBtn','up');
-    bindBtn('downBtn','down');
-    bindBtn('leftBtn','left');
-    bindBtn('rightBtn','right');
-    bindBtn('pitchUpBtn','w');
-    bindBtn('pitchDownBtn','s');
+    bindBtn('upBtn', 'up');
+    bindBtn('downBtn', 'down');
+    bindBtn('leftBtn', 'left');
+    bindBtn('rightBtn', 'right');
+    bindBtn('pitchUpBtn', 'w');
+    bindBtn('pitchDownBtn', 's');
 
     const hudLeft = document.getElementById('hudLeft');
     const hudRight = document.getElementById('hudRight');
@@ -251,8 +276,16 @@ window.addEventListener('DOMContentLoaded', () => {
     const compassText = document.getElementById('compassText');
     const compassNeedle = document.getElementById('compassNeedle');
 
+    function getDistanceKm(lat1, lon1, lat2, lon2) {
+      const R = 6371;
+      const dLat = (lat2 - lat1) * Math.PI / 180;
+      const dLon = (lon2 - lon1) * Math.PI / 180;
+      const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) ** 2;
+      return 2 * R * Math.asin(Math.sqrt(a));
+    }
+
     function updateFlight(dt) {
-      if (crashed || !aircraft) return;
+      if (crashed || !aircraft || !aircraftReady) return;
 
       if (keys.up && fuel > 0) speed += 0.05 * dt;
       if (keys.down) speed -= 0.06 * dt;
@@ -260,6 +293,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
       if (keys.left) yaw += 0.8 * dt;
       if (keys.right) yaw -= 0.8 * dt;
+
       if (keys.w) pitch += 0.5 * dt;
       else if (keys.s) pitch -= 0.5 * dt;
       else pitch *= 0.98;
@@ -323,14 +357,6 @@ window.addEventListener('DOMContentLoaded', () => {
       phaseDisplay.innerText = `الوضعية: ${phase}`;
     }
 
-    function getDistanceKm(lat1, lon1, lat2, lon2) {
-      const R = 6371;
-      const dLat = (lat2 - lat1) * Math.PI / 180;
-      const dLon = (lon2 - lon1) * Math.PI / 180;
-      const a = Math.sin(dLat/2) ** 2 + Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) * Math.sin(dLon/2) ** 2;
-      return 2 * R * Math.asin(Math.sqrt(a));
-    }
-
     let last = performance.now();
     function animate(now) {
       requestAnimationFrame(animate);
@@ -340,9 +366,9 @@ window.addEventListener('DOMContentLoaded', () => {
       updateFlight(dt);
 
       if (aircraft) {
-        const camOffset = new THREE.Vector3(0, 24, 95).applyQuaternion(aircraft.quaternion);
+        const camOffset = new THREE.Vector3(0, 28, 145).applyQuaternion(aircraft.quaternion);
         camera.position.copy(aircraft.position).add(camOffset);
-        camera.lookAt(aircraft.position.clone().add(new THREE.Vector3(0, 10, -40).applyQuaternion(aircraft.quaternion)));
+        camera.lookAt(aircraft.position.clone().add(new THREE.Vector3(0, 12, -60).applyQuaternion(aircraft.quaternion)));
       }
 
       renderer.render(scene, camera);
