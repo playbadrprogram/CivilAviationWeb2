@@ -41,8 +41,15 @@
     font-size:30px; font-weight:bold; cursor:pointer;
   }
 </style>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/examples/js/loaders/GLTFLoader.js"></script>
+
+<script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+    }
+  }
+</script>
 </head>
 <body>
 
@@ -71,7 +78,10 @@
   <button id="pitchDownBtn">هبوط ↓</button>
 </div>
 
-<script>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
 window.addEventListener('DOMContentLoaded', () => {
   try {
     const scene = new THREE.Scene();
@@ -147,7 +157,7 @@ window.addEventListener('DOMContentLoaded', () => {
     }
 
     function loadA380() {
-      const loader = new THREE.GLTFLoader();
+      const loader = new GLTFLoader();
       loader.load(
         'airbus-a380.glb',
         (gltf) => {
@@ -170,50 +180,37 @@ window.addEventListener('DOMContentLoaded', () => {
         },
         undefined,
         (err) => {
-          console.warn('GLB Load failed. Triggering fallback mesh.');
-          aircraft = buildFallbackPlane();
-          aircraft.position.set(0, 12, 5200);
-          aircraft.rotation.set(0, Math.PI, 0);
-          initAircraftSystem();
+          console.warn('GLB failed, using fallback.');
+          buildFallbackMode();
         }
       );
     }
 
-    function buildFallbackPlane() {
-      const g = new THREE.Group();
+    function buildFallbackMode() {
+      aircraft = new THREE.Group();
       const white = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.35 });
       const blue = new THREE.MeshStandardMaterial({ color: 0x0a3c7a, roughness: 0.45 });
-      const dark = new THREE.MeshStandardMaterial({ color: 0x111111 });
 
       const body = new THREE.Mesh(new THREE.CylinderGeometry(4, 4, 60, 18), white);
       body.rotation.z = Math.PI / 2;
-      g.add(body);
+      aircraft.add(body);
 
       const nose = new THREE.Mesh(new THREE.ConeGeometry(4, 12, 18), white);
       nose.rotation.z = -Math.PI / 2;
       nose.position.x = 36;
-      g.add(nose);
+      aircraft.add(nose);
 
-      const wingShape = new THREE.Shape();
-      wingShape.moveTo(0, 0);
-      wingShape.lineTo(30, -5);
-      wingShape.lineTo(50, -15);
-      wingShape.lineTo(25, -12);
-      wingShape.lineTo(0, -5);
-      const wingGeo = new THREE.ExtrudeGeometry(wingShape, { depth: 0.5, bevelEnabled: false });
+      const wingR = new THREE.Mesh(new THREE.BoxGeometry(30, 1, 60), blue);
+      wingR.position.set(0, -1, 30);
+      aircraft.add(wingR);
 
-      const wingR = new THREE.Mesh(wingGeo, blue);
-      wingR.rotation.x = Math.PI / 2;
-      wingR.position.set(0, -1, 4);
-      g.add(wingR);
+      const wingL = new THREE.Mesh(new THREE.BoxGeometry(30, 1, 60), blue);
+      wingL.position.set(0, -1, -30);
+      aircraft.add(wingL);
 
-      const wingL = new THREE.Mesh(wingGeo, blue);
-      wingL.rotation.x = -Math.PI / 2;
-      wingL.position.set(0, -1, -4);
-      g.add(wingL);
-
-      g.scale.set(1.5, 1.5, 1.5);
-      return g;
+      aircraft.position.set(0, 12, 5200);
+      aircraft.rotation.set(0, Math.PI, 0);
+      initAircraftSystem();
     }
 
     loadA380();
