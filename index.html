@@ -260,13 +260,14 @@ window.addEventListener('DOMContentLoaded', () => {
       return 2 * R * Math.asin(Math.sqrt(a));
     }
 
+    // تقريب المسافة وزاوية الرؤية لتصبح الطائرة واضحة خلف الكاميرا تماماً
     function updateCameraPosition() {
       if (!aircraft) return;
-      const relativeCameraOffset = new THREE.Vector3(0, 35, 180);
+      const relativeCameraOffset = new THREE.Vector3(0, 15, 60);
       const cameraOffset = relativeCameraOffset.applyMatrix4(aircraft.matrixWorld);
       camera.position.copy(cameraOffset);
       
-      const targetPosition = new THREE.Vector3(0, 10, -50).applyMatrix4(aircraft.matrixWorld);
+      const targetPosition = new THREE.Vector3(0, 4, -20).applyMatrix4(aircraft.matrixWorld);
       camera.lookAt(targetPosition);
     }
 
