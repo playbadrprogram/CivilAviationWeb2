@@ -139,7 +139,7 @@ window.addEventListener('DOMContentLoaded', () => {
     function loadA380() {
       const loader = new THREE.GLTFLoader();
       loader.load(
-        'models/a380.glb',
+        'a380.glb',
         (gltf) => {
           scene.remove(aircraft);
           aircraft = gltf.scene;
